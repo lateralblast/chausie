@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.7
+# Version:      0.0.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -31,6 +31,7 @@ os_group=$( id -gn )
 mod_path="$app_path/modules"
 app_help=$( grep -A1 "# switch" "$0" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
 app_actions=$( grep -A1 "# action" "$0" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
+app_options=$( grep -A1 "# option" "$0" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -v "=" )
 
 # Print help
 
@@ -47,6 +48,34 @@ print_actions () {
   echo "Actions:"
   echo "$app_actions"
   echo ""
+}
+
+# Print options
+
+print_options () {
+  echo "Options:"
+  echo "$app_options"
+  echo ""
+}
+
+print_usage () {
+  usage="$1"
+  case $usage in
+    help)
+      print help
+      ;;
+    action*)
+      print_actions
+      ;;
+    options)
+      print_options
+      ;;
+    *)
+      print_help
+      print_actions
+      print_options
+      ;;
+  esac
 }
 
 # Print version
@@ -103,9 +132,12 @@ set_defaults () {
   pool_name=""
   pool_dir=""
   release_dir=""
-  do_action="false"
+  do_actions="false"
+  do_options="false"
   do_verbose="false"
+  do_strict="false"
   do_dryrun="false"
+  do_debug="false"
   do_force="false"
   do_create_vm="false"
   do_check_config="false"
@@ -145,6 +177,11 @@ verbose_message () {
       ;;
     "warn")
       echo "Warning:   $message"
+      ;;
+    "verbose")
+      if [ "$do_verbose" = "true" ]; then
+        echo "$message"
+      fi
       ;;
     *)
       echo "$message"
@@ -209,6 +246,7 @@ fi
 # Check config
 
 check_config () {
+  verbose_message "Checking config" "verbose"
   for check_dir in $virt_dir $image_dir; do
     if [ ! -d "$check_dir" ]; then
       execute_command "mkdir -p $virt_dir" "su"
@@ -288,6 +326,12 @@ create_vm () {
 # Reset defaults
 
 reset_defaults () {
+  if [ "$do_debug" = "true" ]; then
+    set -x
+  fi
+  if [ "$do_strict" = "true" ]; then
+    set -eu
+  fi
   if [ "$vm_arch" = "" ]; then
     vm_arch="$os_arch"
   fi
@@ -314,45 +358,75 @@ reset_defaults () {
 
 # Process action
 
-process_action () {
-  action="$1"
-  case $action in
-    "actions") # action
-      # Print actions
+process_actions () {
+  actions="$1"
+  case $actions in
+    action|help) # action
+      # Print actions help
       print_actions
       exit
       ;;
-    "createvm") # action
+    createvm) # action
       # Create VM
       do_check_config="true"
       do_create_pool="true"
       do_create_vm="true"
       ;;
-    "checkconfig") # action
+    *config) # action
       # Check config
       do_check_config="true"
       ;;
-    "createpool") # action
+    createpool) # action
       # Create pool
       do_create_pool="true"
       ;;
-    "help") # action
-      # Print help
-      print_help
-      print_actions
-      exit
-      ;;
-    "version") # action
+    version) # action
       # Print version
       print_version
       exit
       ;;
     *)
-      print_help
       print_actions
       exit
       ;;
   esac
+}
+
+# Process options
+
+process_options () {
+  options="$1"
+  case $options in
+    *debug*) # option
+      # Enable debug mode
+      do_debug="true"
+      ;;
+    *dryrun*) # option
+      # Enable dryrun mode
+      do_dryrun="true"
+      ;;
+    *strict*) # option
+      # Enable strict mode
+      do_strict="true"
+      ;;
+    *verbose*) # option
+      # Enable verbose mode
+      do_verbose="true"
+      ;;
+    options|help) # option
+      # Print options help
+      print_options
+      exit
+      ;;
+    version) # option
+      # Print version
+      print_version
+      exit
+      ;;
+    *)
+      print_options
+      ;;
+  esac    
 }
 
 # Set defaults
@@ -366,8 +440,8 @@ while test $# -gt 0; do
     --action) # switch
       # Action to perform
       check_value "$1" "$2"
-      action="$2"
-      do_action="true"
+      actions="$2"
+      do_actions="true"
       shift 2
       ;;
     --actions) # switch
@@ -401,7 +475,7 @@ while test $# -gt 0; do
       ;;
     --debug) # switch
       # Run in debug mode
-      set -x
+      do_debug="true"
       shift
       ;;
     --disk) # switch
@@ -427,9 +501,8 @@ while test $# -gt 0; do
       ;;
     --help|--usage|-h) # switch
       # Print help
-      print_help
-      print_actions
-      shift
+      print_usage "$2"
+      shift 2
       exit
       ;;
     --imagedir) # switch
@@ -454,6 +527,13 @@ while test $# -gt 0; do
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
+      shift 2
+      ;;
+    --options) # switch
+      # Options
+      check_value "$1" "$2"
+      options="$2"
+      do_options="true"
       shift 2
       ;;
     --osvers) # switch
@@ -488,7 +568,7 @@ while test $# -gt 0; do
       ;;
     --strict) # switch
       # Run in strict mode
-      set -eu
+      do_strict="true"
       shift
       ;;
     --verbose) # switch
@@ -519,10 +599,20 @@ while test $# -gt 0; do
   esac
 done
 
-if [ "$do_action" = "true" ]; then
-  process_action "$action"
-fi
 reset_defaults
+if [ "$do_actions" = "true" ]; then
+  process_actions "$actions"
+fi
+if [ "$do_options" = "true" ]; then
+  if [[ "$options" =~ "," ]]; then
+    IFS="," read -r -a options <<< $options
+    for option in "${options[@]}"; do
+      process_options "$option"
+    done
+  else
+    process_options "$options"
+  fi
+fi
 if [ "$do_check_config" = "true" ]; then
   check_config
 fi
