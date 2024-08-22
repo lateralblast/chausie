@@ -4,3 +4,7 @@
 # Added code to check environment and fetch cloud image
 # 0.0.3: Thu 22 Aug 2024 10:11:49 AEST
 # Fixed code to fetch image
+# 0.0.4: Thu 22 Aug 2024 10:41:42 AEST
+# Added code to check parameter values
+# 0.0.5: Thu 22 Aug 2024 10:42:55 AEST
+# Fixed code to create pools 

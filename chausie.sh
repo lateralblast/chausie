@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.3
+# Version:      0.0.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -53,6 +53,19 @@ print_version () {
 do_exit () {
   if [ ! "$do_dryrun" = "true" ]; then
     exit
+  fi
+}
+
+# Check value
+
+check_value () {
+  parameter="$1"
+  value="$2"
+  if [[ "$value" =~ "--" ]]; then
+    verbose_message "Value '$value' for parameter '$parameter' looks like a parameter" "warn"
+    if [ "$do_force" = "false" ]; then
+      do_exit
+    fi
   fi
 }
 
@@ -241,10 +254,11 @@ get_image () {
 # Create Pool
 
 create_pool () {
+  pool_dir="$1"
   create_libvirt_dir "$pool_dir"
-  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep "^$vm_name$" |wc -l |sed "s //g" )
+  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep "^$vm_name$" |wc -l |sed "s/ //g" )
   if [ "$pool_test" = "0" ]; then
-    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir"
+    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir" ""
   fi
 }
 
@@ -281,7 +295,7 @@ reset_defaults () {
     pool_name="$vm_name"
   fi
   if [ "$pool_dir" = "" ]; then
-    pool_dir="$image_dir/$vm_name"
+    pool_dir="$image_dir/$pool_name"
   fi
   if [ "$release_dir" = "" ]; then
     release_dir="$image_dir/releases"
@@ -299,11 +313,13 @@ while test $# -gt 0; do
   case $1 in
     --arch)
       # Specify architecture
+      check_value "$1" "$2"
       vm_arch="$2"
       shift 2
       ;;
     --bridge)
       # VM network bridge
+      check_value "$1" "$2"
       vm_bridge="$2"
       shift 2
       ;;
@@ -314,17 +330,20 @@ while test $# -gt 0; do
       ;;
     --cpus)
       # Number of VM CPUs
+      check_value "$1" "$2"
       vm_cpus="$2"
       shift 2
       ;;
     --createpool)
       # Create pool
-      do_create_pool="true"
+      check_value "$1" "$2"
       pool_name="$2"
+      do_create_pool="true"
       shift 2
       ;;
     --createvm)
       # Create VM
+      check_value "$1" "$2"
       do_check_config="true"
       do_get_image="true"
       do_create_pool="true"
@@ -338,6 +357,7 @@ while test $# -gt 0; do
       ;;
     --disk)
       # VM disk file
+      check_value "$1" "$2"
       vm_disk="$2"
       shift 2
       ;;
@@ -356,53 +376,62 @@ while test $# -gt 0; do
       do_get_image="true"
       shift
       ;;
-    --help)
+    --help|-h)
       # Print help
       print_help
       shift
       ;;
     --imagedir)
       # Image directory
+      check_value "$1" "$2"
       image_dir="$2"
       shift 2
       ;;
     --imagefile)
       # Image file
+      check_value "$1" "$2"
       image_file="$2"
       shift 2
       ;;
     --imageurl)
       # Image URL
+      check_value "$1" "$2"
       image_url="$2"
       shift 2
       ;;
     --name)
       # Name of VM
+      check_value "$1" "$2"
       vm_name="$2"
       shift 2
       ;;
     --osvers)
       # OS version of image
+      check_value "$1" "$2"
       os_vers="$2"
       shift 2
       ;;
     --poolname)
-      # Pool anme
+      # Pool name
+      check_value "$1" "$2"
       pool_name="$2"
       shift 2
       ;;
     --pooldir)
       # Pool directory
+      check_value "$2"
       pool_dir="$2"
       shift 2
       ;;
     --ram)
       # Amount of VM RAM
+      check_value "$1" "$2"
       vm_ram="$2"
       shift 2
       ;;
     --size)
       # Size of VM disk
+      check_value "$1" "$2"
       vm_size="$2"
       shift 2
       ;;
@@ -416,13 +445,14 @@ while test $# -gt 0; do
       do_verbose="true"
       shift
       ;;
-    --version)
+    --version|-V)
       # Print version
       print_version
       shift
       ;;
     --virtdir)
       # VM base directory
+      check_value "$1" "$2"
       virt_dir="$2"
       shift 2
       ;;
@@ -445,7 +475,7 @@ if [ "$do_get_image" = "true" ]; then
   get_image
 fi
 if [ "$do_create_pool" = "true" ]; then
-  create_pool
+  create_pool "$pool_dir"
 fi
 if [ "$do_create_vm" = "true" ]; then
   create_vm
