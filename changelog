@@ -8,3 +8,5 @@
 # Added code to check parameter values
 # 0.0.5: Thu 22 Aug 2024 10:42:55 AEST
 # Fixed code to create pools 
+# 0.0.6: Thu 22 Aug 2024 11:46:58 AEST
+# Added action switch and documentation

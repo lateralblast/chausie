@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.5
+# Version:      0.0.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -29,7 +29,8 @@ os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
 os_group=$( id -gn )
 mod_path="$app_path/modules"
-app_help=$( grep -A1 "\--[A-Z,a-z]" "$0" |sed "s/^--//g" |sed "s/# //g" | tr -s " " )
+app_help=$( grep -A1 "# switch" "$0" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
+app_actions=$( grep -A1 "# action" "$0" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
 
 # Print help
 
@@ -38,14 +39,20 @@ print_help () {
   echo ""
   echo "$app_help"
   echo ""
-  exit
+}
+
+# Print actions
+
+print_actions () {
+  echo "Actions:"
+  echo "$app_actions"
+  echo ""
 }
 
 # Print version
 
 print_version () {
   echo "$app_vers"
-  exit
 }
 
 # Exit routine
@@ -96,6 +103,7 @@ set_defaults () {
   pool_name=""
   pool_dir=""
   release_dir=""
+  do_action="false"
   do_verbose="false"
   do_dryrun="false"
   do_force="false"
@@ -195,6 +203,7 @@ fi
 
 if [ "$app_args" = "" ]; then
   print_help
+  exit
 fi
 
 # Check config
@@ -303,6 +312,49 @@ reset_defaults () {
   create_libvirt_dir "$release_dir"
 }
 
+# Process action
+
+process_action () {
+  action="$1"
+  case $do_action in
+    "actions") # action
+      # Print actions
+      print_actions
+      exit
+      ;;
+    "createvm") # action
+      # Create VM
+      do_check_config="true"
+      do_create_pool="true"
+      do_create_vm="true"
+      ;;
+    "checkconfig") # action
+      # Check config
+      do_check_config="true"
+      ;;
+    "createpool") # action
+      # Create pool
+      do_create_pool="true"
+      ;;
+    "help") # action
+      # Print help
+      print_help
+      print_actions
+      exit
+      ;;
+    "version") # action
+      # Print version
+      print_version
+      exit
+      ;;
+    *)
+      print_help
+      print_actions
+      exit
+      ;;
+  esac
+}
+
 # Set defaults
 
 set_defaults
@@ -311,146 +363,146 @@ set_defaults
 
 while test $# -gt 0; do
   case $1 in
-    --arch)
+    --action) # switch
+      # Action to perform
+      check_value "$1" "$2"
+      action="$2"
+      do_action="true"
+      shift 2
+      ;;
+    --actions) # switch
+      # Print actions
+      print_actions
+      shift
+      exit
+      ;;
+    --arch) # switch
       # Specify architecture
       check_value "$1" "$2"
       vm_arch="$2"
       shift 2
       ;;
-    --bridge)
+    --bridge) # switch
       # VM network bridge
       check_value "$1" "$2"
       vm_bridge="$2"
       shift 2
       ;;
-    --checkconfig)
+    --checkconfig) # switch
       # Check config
       do_check_config="true"
       shift
       ;;
-    --cpus)
+    --cpus) # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm_cpus="$2"
       shift 2
       ;;
-    --createpool)
-      # Create pool
-      check_value "$1" "$2"
-      pool_name="$2"
-      do_create_pool="true"
-      shift 2
-      ;;
-    --createvm)
-      # Create VM
-      check_value "$1" "$2"
-      do_check_config="true"
-      do_get_image="true"
-      do_create_pool="true"
-      do_create_vm="true"
-      shift
-      ;;
-    --debug)
+    --debug) # switch
       # Run in debug mode
       set -x
       shift
       ;;
-    --disk)
+    --disk) # switch
       # VM disk file
       check_value "$1" "$2"
       vm_disk="$2"
       shift 2
       ;;
-    --dryrun)
+    --dryrun) # switch
       # Run in dryrun mode
       do_dryrun="true"
       shift
       ;;
-    --force)
+    --force) # switch
       # Force mode
       do_force="true"
       shift
       ;;
-    --getimage)
+    --getimage) # switch
       # Get Image
       do_get_image="true"
       shift
       ;;
-    --help|-h)
+    --help|--usage|-h) # switch
       # Print help
       print_help
+      print_actions
       shift
+      exit
       ;;
-    --imagedir)
+    --imagedir) # switch
       # Image directory
       check_value "$1" "$2"
       image_dir="$2"
       shift 2
       ;;
-    --imagefile)
+    --imagefile) # switch
       # Image file
       check_value "$1" "$2"
       image_file="$2"
       shift 2
       ;;
-    --imageurl)
+    --imageurl) # switch
       # Image URL
       check_value "$1" "$2"
       image_url="$2"
       shift 2
       ;;
-    --name)
+    --name) # switch
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
       shift 2
       ;;
-    --osvers)
+    --osvers) # switch
       # OS version of image
       check_value "$1" "$2"
       os_vers="$2"
       shift 2
       ;;
-    --poolname)
+    --poolname) # switch
       # Pool name
       check_value "$1" "$2"
       pool_name="$2"
       shift 2
       ;;
-    --pooldir)
+    --pooldir) # switch
       # Pool directory
       check_value "$2"
       pool_dir="$2"
       shift 2
       ;;
-    --ram)
+    --ram) # switch
       # Amount of VM RAM
       check_value "$1" "$2"
       vm_ram="$2"
       shift 2
       ;;
-    --size)
+    --size) # switch
       # Size of VM disk
       check_value "$1" "$2"
       vm_size="$2"
       shift 2
       ;;
-    --strict)
+    --strict) # switch
       # Run in strict mode
       set -eu
       shift
       ;;
-    --verbose)
+    --verbose) # switch
       # Run in verbose mode
       do_verbose="true"
       shift
       ;;
-    --version|-V)
+    --version|-V) # switch
       # Print version
       print_version
       shift
+      exit
       ;;
-    --virtdir)
+    --virtdir) # switch
       # VM base directory
       check_value "$1" "$2"
       virt_dir="$2"
@@ -467,6 +519,9 @@ while test $# -gt 0; do
   esac
 done
 
+if [ "$do_action" = "true" ]; then
+  process_action "$action"
+fi
 reset_defaults
 if [ "$do_check_config" = "true" ]; then
   check_config
