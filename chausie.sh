@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.0
+# Version:      0.1.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -181,21 +181,25 @@ set_defaults () {
 verbose_message () {
   message="$1"
   format="$2"
-  case "$format" in
-    "execute")
-      echo "Executing: $message"
-      ;;
-    "warn")
-      echo "Warning:   $message"
-      ;;
-    "verbose")
-      if [ "$do_verbose" = "true" ]; then
+  if [ "$do_verbose" = "true" ] || [ "$format" = "verbose" ]; then
+    case "$format" in
+      "execute")
+        echo "Executing: $message"
+        ;;
+      "warn")
+        echo "Warning:   $message"
+        ;;
+      "notice")
+        echo "Notice:    $message"
+        ;;
+      "verbose")
         echo "$message"
-      fi
-      ;;
-    *)
-      echo "$message"
-  esac
+        ;;
+      *)
+        echo "$message"
+        ;;
+    esac
+  fi
 }
 
 # Execute command
@@ -288,6 +292,8 @@ create_libvirt_dir () {
       execute_command "chown root:libvirt $new_dir" "su"
       execute_command "chmod 775 $new_dir" "su"
     fi
+  else
+    verbose_message "Directory \"$new_dir\" already exists" "notice"
   fi
 }
 
@@ -306,18 +312,37 @@ get_image () {
   fi
   if [ ! -f "$image_dir/$image_file" ]; then
     execute_command "cd $image_dir ; wget $image_url" "sulinux"
+  else
+    verbose_message "Cloud Image \"$image_file\" already exists" "notice"
   fi
 }
 
 # Create Pool
 
 create_pool () {
-  pool_dir="$1"
+  pool_name="$1"
+  pool_dir="$2"
   create_libvirt_dir "$pool_dir"
-  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep -c "^$vm_name$" )
-  if [ "$pool_test" = "0" ]; then
+  pool_test=$( virsh pool-list |awk "{ print \$1 }" )
+  if [[ ! "$pool_test" =~ "$pool_name" ]]; then
     execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir" ""
+  else
+    verbose_message "Pool \"$pool_name\" already exists" "notice"
   fi
+}
+
+# Delete Pool
+
+delete_pool () {
+  pool_name="$1"
+  pool_dir="$2"
+  pool_test=$( virsh pool-list |awk "{ print \$1 }" )
+  if [[ "$pool_test" =~ "$pool_name" ]]; then
+    execute_command "virsh pool-delete --name $pool_name" ""
+  else
+    verbose_message "Pool \"$pool_name\" does not exist" "notice"
+  fi
+  delete_libvirt_dir "$pool_dir"
 }
 
 # Create VM
@@ -374,7 +399,7 @@ process_actions () {
   case $actions in
     action|help) # action
       # Print actions help
-      print_actions
+      print_usage "actions"
       exit
       ;;
     createvm) # action
@@ -401,7 +426,7 @@ process_actions () {
       exit
       ;;
     *)
-      print_actions
+      print_usage "actions"
       exit
       ;;
   esac
@@ -430,7 +455,7 @@ process_options () {
       ;;
     options|help) # option
       # Print options help
-      print_options
+      print_usage "options"
       exit
       ;;
     version) # option
@@ -439,7 +464,7 @@ process_options () {
       exit
       ;;
     *)
-      print_options
+      print_usage "options"
       ;;
   esac    
 }
@@ -461,7 +486,7 @@ while test $# -gt 0; do
       ;;
     --actions) # switch
       # Print actions
-      print_actions
+      print_usage "actions"
       shift
       exit
       ;;
@@ -613,7 +638,7 @@ while test $# -gt 0; do
       break
       ;;
     *)
-      print_help
+      print_usage
       exit
       ;;
   esac
@@ -644,7 +669,7 @@ if [ "$do_get_image" = "true" ]; then
   get_image
 fi
 if [ "$do_create_pool" = "true" ]; then
-  create_pool "$pool_dir"
+  create_pool "$pool_name" "$pool_dir"
 fi
 if [ "$do_create_vm" = "true" ]; then
   create_vm

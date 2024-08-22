@@ -18,3 +18,5 @@
 # Improved options and help processing
 # 0.1.0: Thu 22 Aug 2024 16:23:00 AEST
 # Added shellcheck code and switch
+# 0.1.1: Fri 23 Aug 2024 08:32:03 AEST
+# Added notice message
