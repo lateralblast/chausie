@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.9
+# Version:      0.1.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -13,32 +13,30 @@
 # Packager:     Richard Spindler <richard@lateralblast.com.au>
 # Description:  Shell script designed to simplify creation of custom Ubuntu Cloud Images
 
-# shellcheck disable=SC2129
 # shellcheck disable=SC2034
-# shellcheck disable=SC2045
 # shellcheck disable=SC1090
 
-app_args="$*"
-app_name="chausie"
-app_path=$( pwd )
-app_bin=$( basename "$0" |sed "s/^\.\///g")
-app_file="$app_path/$app_bin"
-app_vers=$( grep '^# Version' < "$0" | awk '{print $3}' )
+script_args="$*"
+script_name="chausie"
+script_path=$( pwd )
+script_bin=$( basename "$0" |sed "s/^\.\///g")
+script_file="$script_path/$script_bin"
+script_vers=$( grep '^# Version' < "$0" | awk '{print $3}' )
 os_name=$( uname )
 os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
 os_group=$( id -gn )
-mod_path="$app_path/modules"
-app_help=$( grep -A1 "# switch" "$0" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
-app_actions=$( grep -A1 "# action" "$0" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
-app_options=$( grep -A1 "# option" "$0" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -v "=" )
+mod_path="$script_path/modules"
+script_help=$( grep -A1 "# switch" "$0" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
+script_actions=$( grep -A1 "# action" "$0" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
+script_options=$( grep -A1 "# option" "$0" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -v "=" )
 
 # Print help
 
 print_help () {
-  echo "Usage: $app_bin [OPTIONS...]"
+  echo "Usage: $script_bin [OPTIONS...]"
   echo ""
-  echo "$app_help"
+  echo "$script_help"
   echo ""
 }
 
@@ -46,7 +44,7 @@ print_help () {
 
 print_actions () {
   echo "Actions:"
-  echo "$app_actions"
+  echo "$script_actions"
   echo ""
 }
 
@@ -54,9 +52,11 @@ print_actions () {
 
 print_options () {
   echo "Options:"
-  echo "$app_options"
+  echo "$script_options"
   echo ""
 }
+
+# Print Usage
 
 print_usage () {
   usage="$1"
@@ -81,7 +81,7 @@ print_usage () {
 # Print version
 
 print_version () {
-  echo "$app_vers"
+  echo "$script_vers"
 }
 
 # Exit routine
@@ -109,7 +109,7 @@ check_value () {
 
 check_packages () {
   for package in $required_packages; do
-    package_check=$( echo "$installed_packages" |grep "^$package$" |wc -l |sed "s/ //g" )
+    package_check=$( echo "$installed_packages" |grep -c "^$package$" )
     if [ "$package_check" = "0" ]; then
       if [ "$os_name" = "Darwin" ]; then
         execute_command "brew install $package" ""
@@ -118,6 +118,15 @@ check_packages () {
       fi
     fi
   done
+}
+
+# Run Shellcheck
+
+check_shellcheck () {
+  bin_test=$( command -v shellcheck | grep -c shellcheck )
+  if [ ! "$bin_test" = "0" ]; then
+    shellcheck "$script_file"
+  fi
 }
 
 # Set defaults
@@ -139,6 +148,7 @@ set_defaults () {
   do_dryrun="false"
   do_debug="false"
   do_force="false"
+  do_shellcheck="false"
   do_create_vm="false"
   do_check_config="false"
   do_get_image="false"
@@ -228,8 +238,9 @@ fi
 # Load modules
 
 if [ -d "$mod_path" ]; then
-  for module in $( ls "$mod_path"/*.sh ); do
-    if [[ "$app_args" =~ "verbose" ]]; then
+  modules=$( ls "$mod_path"/*.sh )
+  for module in "${modules[@]}"; do
+    if [[ "$script_args" =~ "verbose" ]]; then
       echo "Loading Module: $module"
     fi
     . "$module"
@@ -238,7 +249,7 @@ fi
 
 # If given no arguments print help
 
-if [ "$app_args" = "" ]; then
+if [ "$script_args" = "" ]; then
   print_help
   exit
 fi
@@ -258,7 +269,7 @@ check_config () {
       execute_command "chown root:kvm /dev/kvm" "su"
     fi
     for group in kvm libvirt libvirt-qemu; do
-      group_check=$( groups |grep "$group " |wc -l )
+      group_check=$( groups |grep -c "$group " )
       if [ "$group_check" = "0" ]; then
         execute_command "usermod -a -G $group $os_user" "su"
       fi
@@ -303,7 +314,7 @@ get_image () {
 create_pool () {
   pool_dir="$1"
   create_libvirt_dir "$pool_dir"
-  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep "^$vm_name$" |wc -l |sed "s/ //g" )
+  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep -c "^$vm_name$" )
   if [ "$pool_test" = "0" ]; then
     execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir" ""
   fi
@@ -336,7 +347,7 @@ reset_defaults () {
     vm_arch="$os_arch"
   fi
   if [ "$vm_name" = "" ]; then
-    vm_name="$app_name"
+    vm_name="$script_name"
   fi
   if [ "$image_dir" = "" ]; then
     image_dir="$virt_dir/images"
@@ -379,6 +390,10 @@ process_actions () {
     createpool) # action
       # Create pool
       do_create_pool="true"
+      ;;
+    shellcheck) # action
+      # Check script with shellcheck
+      do_shellcheck="true"
       ;;
     version) # action
       # Print version
@@ -566,6 +581,11 @@ while test $# -gt 0; do
       vm_size="$2"
       shift 2
       ;;
+    --shellcheck)
+      # Run shellcheck on script
+      do_shellcheck="true"
+      shift
+      ;;
     --strict) # switch
       # Run in strict mode
       do_strict="true"
@@ -600,13 +620,17 @@ while test $# -gt 0; do
 done
 
 reset_defaults
+if [ "$do_shellcheck" = "true" ]; then
+  check_shellcheck
+  exit
+fi
 if [ "$do_actions" = "true" ]; then
   process_actions "$actions"
 fi
 if [ "$do_options" = "true" ]; then
   if [[ "$options" =~ "," ]]; then
-    IFS="," read -r -a options <<< $options
-    for option in "${options[@]}"; do
+    IFS="," read -r -a array <<< "$options"
+    for option in "${array[@]}"; do
       process_options "$option"
     done
   else

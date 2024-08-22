@@ -16,3 +16,5 @@
 # Improved action processing
 # 0.0.9: Thu 22 Aug 2024 15:50:58 AEST
 # Improved options and help processing
+# 0.1.0: Thu 22 Aug 2024 16:23:00 AEST
+# Added shellcheck code and switch
