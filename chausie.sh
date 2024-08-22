@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.6
+# Version:      0.0.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -316,7 +316,7 @@ reset_defaults () {
 
 process_action () {
   action="$1"
-  case $do_action in
+  case $action in
     "actions") # action
       # Print actions
       print_actions
