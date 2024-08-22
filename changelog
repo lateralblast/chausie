@@ -20,3 +20,5 @@
 # Added shellcheck code and switch
 # 0.1.1: Fri 23 Aug 2024 08:32:03 AEST
 # Added notice message
+# 0.1.2: Fri 23 Aug 2024 08:39:06 AEST
+# Moved help greps into functions to speed general startup

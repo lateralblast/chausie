@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.1
+# Version:      0.1.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -27,13 +27,11 @@ os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
 os_group=$( id -gn )
 mod_path="$script_path/modules"
-script_help=$( grep -A1 "# switch" "$0" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
-script_actions=$( grep -A1 "# action" "$0" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
-script_options=$( grep -A1 "# option" "$0" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -v "=" )
 
 # Print help
 
 print_help () {
+  script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -v "=" )
   echo "Usage: $script_bin [OPTIONS...]"
   echo ""
   echo "$script_help"
@@ -43,6 +41,7 @@ print_help () {
 # Print actions
 
 print_actions () {
+  script_actions=$( grep -A1 "# action" "$script_file" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -v "=" )
   echo "Actions:"
   echo "$script_actions"
   echo ""
@@ -51,6 +50,7 @@ print_actions () {
 # Print options
 
 print_options () {
+  script_options=$( grep -A1 "# option" "$script_file" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -v "=" )
   echo "Options:"
   echo "$script_options"
   echo ""
