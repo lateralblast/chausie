@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.0.1
+# Version:      0.0.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -48,19 +48,69 @@ print_version () {
   exit
 }
 
+# Exit routine
+
+do_exit () {
+  if [ ! "$do_dryrun" = "true" ]; then
+    exit
+  fi
+}
+
+# Install required packages
+
+check_packages () {
+  for package in $required_packages; do
+    package_check=$( echo "$installed_packages" |grep "^$package$" |wc -l |sed "s/ //g" )
+    if [ "$package_check" = "0" ]; then
+      if [ "$os_name" = "Darwin" ]; then
+        execute_command "brew install $package" ""
+      else
+        execute_command "apt get install $package" "su"
+      fi
+    fi
+  done
+}
+
 # Set defaults
 
 set_defaults () {
+  vm_name=""
+  vm_disk=""
+  image_name="" 
+  image_file=""
+  image_dir=""
+  image_url=""
+  pool_name=""
+  pool_dir=""
+  release_dir=""
   do_verbose="false"
   do_dryrun="false"
-  do_create="false"
+  do_force="false"
+  do_create_vm="false"
+  do_check_config="false"
+  do_get_image="false"
+  do_create_pool="false"
   vm_arch="$os_arch"
-  virt_dir="/var/lib/libvirt"
-  image_dir="$virt_dir/images"
   vm_cpus="2"
   vm_ram="2048"
   vm_size="20G"
-  vm_bridge="br0"
+  os_vers="24.04"
+  if [ "$os_name" = "Darwin" ]; then
+    vm_bridge="default"
+    brew_dir="/opt/homebrew/Cellar"
+    if [ ! -d "$brew_dir" ]; then
+      brew_dir="/usr/local/Cellar"
+    fi
+    virt_dir="$brew_dir/libvirt"
+    installed_packages=$( brew list )
+    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager"
+  else
+    vm_bridge="br0"
+    virt_dir="/var/lib/libvirt"
+    installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
+    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager"
+  fi
+  image_dir="$virt_dir/images"
 }
 
 # Verbose message
@@ -87,6 +137,11 @@ execute_command () {
   privilege="$2"
   if [ "$privilege" = "su" ]; then
     command="sudo sh -c '$command'"
+  fi
+  if [ "$privilege" = "linuxsu" ]; then
+    if [ "$os_name" = "Linux" ]; then
+      command="sudo sh -c '$command'"
+    fi
   fi
   if [ "$do_verbose" = "true" ]; then
     verbose_message "$command" "execute"
@@ -137,22 +192,74 @@ check_config () {
       execute_command "mkdir -p $virt_dir" "su"
     fi
   done
+  if [ "$os_name" = "Linux" ]; then
+    group_check=$( stat -c "%G" /dev/kvm )
+    if [ ! "$group_check" = "kvm" ]; then
+      execute_command "chown root:kvm /dev/kvm" "su"
+    fi
+    for group in kvm libvirt libvirt-qemu; do
+      group_check=$( groups |grep "$group " |wc -l )
+      if [ "$group_check" = "0" ]; then
+        execute_command "usermod -a -G $group $os_user" "su"
+      fi
+    done
+  fi
+  check_packages
+}
+
+# Create libvirt dir
+
+create_libvirt_dir () {
+  new_dir="$1" 
+  if [ ! -d "$new_dir" ]; then
+    execute_command "mkdir -p $new_dir" "linuxsu"
+    if [ "$os_name" = "Linux" ]; then 
+      execute_command "chown root:libvirt $new_dir" "su"
+      execute_command "chmod 775 $new_dir" "su"
+    fi
+  fi
 }
 
 # Get image
 
 get_image () {
-  image_file="ubuntu-$os_vers-server-cloudimg-$vm_arch.img"
-  image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
+  if [ "$image_dir" = "" ]; then
+    image_dir="$virt_dir/images"
+  fi
+  create_libvirt_dir "$image_dir"
+  if [ "$image_file" = "" ]; then
+    image_file="ubuntu-$os_vers-server-cloudimg-$vm_arch.img"
+  fi
+  if [ "$image_url" = "" ]; then
+    image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
+  fi
   if [ ! -f "$image_dir/$image_file" ]; then
-    execute_command "cd $image_dir ; wget $image_url"
+    execute_command "cd $image_dir ; wget $image_url" "sulinux"
+  fi
+}
+
+# Create Pool
+
+create_pool () {
+  create_libvirt_dir "$pool_dir"
+  pool_test=$( virsh pool-list |awk '{ print $1 }' |grep "^$vm_name$" |wc -l |sed "s //g" )
+  if [ "$pool_test" = "0" ]; then
+    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir"
   fi
 }
 
 # Create VM
 
 create_vm () {
-  :
+  if [ ! -f "$image_dir/$image_file" ]; then 
+    verbose_message "Image file $image_dir/$image_file does not exist" "warn"
+    do_exit
+  fi
+  if [ -f "$vm_disk" ]; then
+    verbose_message "VM disk file $vm_disk already exists" "warn"
+    do_exit
+  fi
+#  virt-install --import --name $vm_name --memory 4096 --vcpus 4 --cpu host --disk haos_ova-13.0.qcow2,format=qcow2,bus=virtio --network bridge=br0,model=virtio --osinfo detect=on,require=off --graphics none --noautoconsole --boot uefi
 }
 
 # Reset defaults
@@ -161,6 +268,25 @@ reset_defaults () {
   if [ "$vm_arch" = "" ]; then
     vm_arch="$os_arch"
   fi
+  if [ "$vm_name" = "" ]; then
+    vm_name="$app_name"
+  fi
+  if [ "$image_dir" = "" ]; then
+    image_dir="$virt_dir/images"
+  fi
+  if [ "$vm_disk" = "" ]; then
+    vm_disk="$virt_dir/$vm_name/$vm_name.qcow2"
+  fi
+  if [ "$pool_name" = "" ]; then
+    pool_name="$vm_name"
+  fi
+  if [ "$pool_dir" = "" ]; then
+    pool_dir="$image_dir/$vm_name"
+  fi
+  if [ "$release_dir" = "" ]; then
+    release_dir="$image_dir/releases"
+  fi
+  create_libvirt_dir "$release_dir"
 }
 
 # Set defaults
@@ -181,24 +307,53 @@ while test $# -gt 0; do
       vm_bridge="$2"
       shift 2
       ;;
+    --checkconfig)
+      # Check config
+      do_check_config="true"
+      shift
+      ;;
     --cpus)
       # Number of VM CPUs
       vm_cpus="$2"
       shift 2
+      ;;
+    --createpool)
+      # Create pool
+      do_create_pool="true"
+      pool_name="$2"
+      shift 2
+      ;;
+    --createvm)
+      # Create VM
+      do_check_config="true"
+      do_get_image="true"
+      do_create_pool="true"
+      do_create_vm="true"
+      shift
       ;;
     --debug)
       # Run in debug mode
       set -x
       shift
       ;;
-    --create)
-      # Create VM
-      do_create="true"
-      shift
+    --disk)
+      # VM disk file
+      vm_disk="$2"
+      shift 2
       ;;
     --dryrun)
       # Run in dryrun mode
       do_dryrun="true"
+      shift
+      ;;
+    --force)
+      # Force mode
+      do_force="true"
+      shift
+      ;;
+    --getimage)
+      # Get Image
+      do_get_image="true"
       shift
       ;;
     --help)
@@ -211,9 +366,34 @@ while test $# -gt 0; do
       image_dir="$2"
       shift 2
       ;;
+    --imagefile)
+      # Image file
+      image_file="$2"
+      shift 2
+      ;;
+    --imageurl)
+      # Image URL
+      image_url="$2"
+      shift 2
+      ;;
     --name)
       # Name of VM
       vm_name="$2"
+      shift 2
+      ;;
+    --osvers)
+      # OS version of image
+      os_vers="$2"
+      shift 2
+      ;;
+    --poolname)
+      # Pool anme
+      pool_name="$2"
+      shift 2
+      ;;
+    --pooldir)
+      # Pool directory
+      pool_dir="$2"
       shift 2
       ;;
     --ram)
@@ -258,3 +438,15 @@ while test $# -gt 0; do
 done
 
 reset_defaults
+if [ "$do_check_config" = "true" ]; then
+  check_config
+fi
+if [ "$do_get_image" = "true" ]; then
+  get_image
+fi
+if [ "$do_create_pool" = "true" ]; then
+  create_pool
+fi
+if [ "$do_create_vm" = "true" ]; then
+  create_vm
+fi

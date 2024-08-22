@@ -1,2 +1,6 @@
 # 0.0.1: Tue 20 Aug 2024 18:12:15 AEST
 # Initial shell of script
+# 0.0.2: Wed Aug 21 05:10:34 PM AEST 2024
+# Added code to check environment and fetch cloud image
+# 0.0.3: Thu 22 Aug 2024 10:11:49 AEST
+# Fixed code to fetch image
