@@ -22,3 +22,9 @@
 # Added notice message
 # 0.1.2: Fri 23 Aug 2024 08:39:06 AEST
 # Moved help greps into functions to speed general startup
+# 0.1.3: Fri 23 Aug 2024 09:21:49 AEST
+# Fixed image filename determination
+# 0.1.4: Fri 23 Aug 2024 13:40:12 AEST
+# Added initial code for creating VMs
+# 0.1.5: Sat 24 Aug 2024 16:18:34 AEST
+# Added deletepool function
