@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.6
+# Version:      0.1.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -363,7 +363,7 @@ delete_pool () {
   pool_name="$1"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-delete --name $pool_name" ""
+    execute_command "virsh pool-destroy --pool $pool_name" ""
   else
     verbose_message "Pool \"$pool_name\" does not exist" "notice"
   fi
