@@ -32,3 +32,5 @@
 # Added code to stop/start VM
 # 0.1.7: Sat 24 Aug 2024 19:13:13 AEST
 # Fixed code to delete pool
+# 0.1.8: Sat 24 Aug 2024 19:22:39 AEST
+# Added check for virt-manager cache directory

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.7
+# Version:      0.1.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -26,6 +26,7 @@ os_name=$( uname )
 os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
 os_group=$( id -gn )
+os_hone=$( echo "$HOME" )
 mod_path="$script_path/modules"
 
 # Print help
@@ -169,6 +170,7 @@ set_defaults () {
   vm_cputype="host"
   vm_osinfo="detect=on,require=off"
   vm_graphics="none"
+  cache_dir="$os_home/.cache/virt-manager"
   if [ "$os_name" = "Darwin" ]; then
     vm_bridge="default"
     brew_dir="/opt/homebrew/Cellar"
@@ -276,9 +278,9 @@ fi
 
 check_config () {
   verbose_message "Checking config" "info"
-  for check_dir in $virt_dir $image_dir; do
+  for check_dir in $virt_dir $image_dir $cache_dir; do
     if [ ! -d "$check_dir" ]; then
-      execute_command "mkdir -p $virt_dir" "su"
+      execute_command "mkdir -p $virt_dir" "linuxsu"
     fi
   done
   if [ "$os_name" = "Linux" ]; then
@@ -398,9 +400,9 @@ create_vm () {
     cli_autoconsole="--autoconsole $vm_graphics"
   fi
   if [ "$do_autostart" = "false" ]; then
-    cli_autostart="--autostart"
-  else
     cli_autostart=""
+  else
+    cli_autostart="--autostart"
   fi
   cli_name="--name $vm_name"
   cli_memory="--memory $vm_ram"
