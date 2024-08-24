@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.5
+# Version:      0.1.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -152,6 +152,8 @@ set_defaults () {
   do_backing="true"
   do_create_vm="false"
   do_delete_vm="false"
+  do_start_vm="false"
+  do_stop_vm="false"
   do_check_config="false"
   do_get_image="false"
   do_create_pool="false"
@@ -273,7 +275,7 @@ fi
 # Check config
 
 check_config () {
-  verbose_message "Checking config" "verbose"
+  verbose_message "Checking config" "info"
   for check_dir in $virt_dir $image_dir; do
     if [ ! -d "$check_dir" ]; then
       execute_command "mkdir -p $virt_dir" "su"
@@ -418,11 +420,30 @@ create_vm () {
   fi
 }
 
+# Delete VM
+
+delete_vm () {
+  :
+}
+
 # Start VM
 
 start_vm () {
   vm_name="$1"
   command="virsh start $vm_name"
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    execute_command "$command" "linuxsu"
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
+# Stop VM
+
+stop_vm () {
+  vm_name="$1"
+  command="virsh shutdown $vm_name"
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
     execute_command "$command" "linuxsu"
@@ -507,6 +528,14 @@ process_actions () {
     shellcheck) # action
       # Check script with shellcheck
       do_shellcheck="true"
+      ;;
+    shutdown*|stop*)
+      # Stop VM
+      do_stop_vm="true"
+      ;;
+    start*|boot*)
+      # Start VM
+      do_start_vm="true"
       ;;
     version) # action
       # Print version
@@ -805,6 +834,12 @@ if [ "$do_create_pool" = "true" ]; then
 fi
 if [ "$do_create_vm" = "true" ]; then
   create_vm
+fi
+if [ "$do_start_vm" = "true" ]; then
+  start_vm "$vm_name"
+fi
+if [ "$do_stop_vm" = "true" ]; then
+  stop_vm "$vm_name"
 fi
 if [ "$$do_delete_vm" = "true" ]; then
   delete_vm
