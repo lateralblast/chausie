@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.1.8
+# Version:      0.2.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -26,7 +26,7 @@ os_name=$( uname )
 os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
 os_group=$( id -gn )
-os_hone=$( echo "$HOME" )
+os_home="$HOME"
 mod_path="$script_path/modules"
 
 # Print help
@@ -161,18 +161,27 @@ set_defaults () {
   do_delete_pool="false"
   do_autoconsole="false"
   do_autostart="false"
-  vm_arch="$os_arch"
+  do_reboot="false"
   vm_cpus="2"
-  vm_ram="2048"
+  vm_ram="4096"
   vm_size="20G"
   os_vers="24.04"
   vm_boot="uefi"
-  vm_cputype="host"
-  vm_osinfo="detect=on,require=off"
   vm_graphics="none"
+  vm_arch="$os_arch"
+  vm_osvariant=""
   cache_dir="$os_home/.cache/virt-manager"
   if [ "$os_name" = "Darwin" ]; then
-    vm_bridge="default"
+    if [ "$os_arch" = "arm64" ]; then
+      vm_cputype="cortex-a57"
+    else
+      vm_cputype="host"
+    fi
+  else
+    vm_cputype="host"
+  fi
+  if [ "$os_name" = "Darwin" ]; then
+    vm_bridge="en0"
     brew_dir="/opt/homebrew/Cellar"
     if [ ! -d "$brew_dir" ]; then
       brew_dir="/usr/local/Cellar"
@@ -353,7 +362,7 @@ create_pool () {
   create_libvirt_dir "$pool_dir"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir" ""
+    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir 2> /dev/null" ""
   else
     verbose_message "Pool \"$pool_name\" already exists" "notice"
   fi
@@ -365,7 +374,7 @@ delete_pool () {
   pool_name="$1"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-destroy --pool $pool_name" ""
+    execute_command "virsh pool-destroy --pool $pool_name 2> /dev/null" ""
   else
     verbose_message "Pool \"$pool_name\" does not exist" "notice"
   fi
@@ -388,7 +397,7 @@ create_vm () {
     verbose_message "Creating VM disk file \"$vm_disk\"" "info"
   fi
   if [ "$do_backing" = "true" ]; then
-    execute_command "qemu-img create -b $image_dir/$image_file -f qcow2 $vm_disk $vm_size" "linuxsu"
+    execute_command "qemu-img create -b $image_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
   else
     execute_command "cp $image_dir/$image_file $vm_disk" "linuxsu"
     execute_command "qemu-img resize $vm_disk $vm_size" "linuxsu"
@@ -409,11 +418,18 @@ create_vm () {
   cli_vcpus="--vcpus $vm_cpus"
   cli_cpu="--cpu $vm_cputype"
   cli_disk="--disk $vm_disk,format=qcow2,bus=virtio"
-  cli_network="--network bridge=$vm_bridge,model=virtio"
-  cli_osinfo="--osinfo $vm_osinfo"
+  if [ "$os_name" = "Darwin" ]; then
+    cli_network=""
+  else
+    cli_network="-nic vmnet-bridged,ifname=$vm_bridge"
+  fi
+  cli_osvariant="--os-variant $vm_osvariant"
   cli_graphics="--graphics $vm_graphics"
   cli_boot="--boot $vm_boot"
-  command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osinfo $cli_autoconsole $cli_graphics $cli_boot $cli_autostart"
+  if [ "$do_reboot" = "false" ]; then
+    cli_reboot="--noreboot"
+  fi
+  command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osvariant $cli_autoconsole $cli_graphics $cli_boot $cli_autostart $cli_reboot"
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "0" ]]; then
     execute_command "$command" "linuxsu"
@@ -425,7 +441,12 @@ create_vm () {
 # Delete VM
 
 delete_vm () {
-  :
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    execute_command "virsh undefine --nvram $vm_name" "linuxsu"
+  else
+    verbose_message "VM \"$vm_name\" doesn't exists" "notice"
+  fi
 }
 
 # Start VM
@@ -470,7 +491,7 @@ reset_defaults () {
     vm_name="$script_name"
   fi
   if [ "$image_file" = "" ]; then
-    image_file="ubuntu-$os_vers-server-cloudimg-$vm_arch.img"
+    image_file="ubuntu-$os_vers-server-cloudimg-$os_arch.img"
   fi
   if [ "$image_url" = "" ]; then
     image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
@@ -479,7 +500,7 @@ reset_defaults () {
     image_dir="$virt_dir/images"
   fi
   if [ "$vm_disk" = "" ]; then
-    vm_disk="$virt_dir/$vm_name/$vm_name.qcow2"
+    vm_disk="$image_dir/$vm_name/$vm_name.qcow2"
   fi
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
@@ -489,6 +510,9 @@ reset_defaults () {
   fi
   if [ "$release_dir" = "" ]; then
     release_dir="$image_dir/releases"
+  fi
+  if [ "$vm_osvariant" = "" ]; then
+    vm_osvariant="ubuntu$os_vers"
   fi
   create_libvirt_dir "$release_dir"
 }
@@ -556,31 +580,31 @@ process_actions () {
 process_options () {
   options="$1"
   case $options in
-    *debug*) # option
+    debug) # option
       # Enable debug mode
       do_debug="true"
       ;;
-    *dryrun*) # option
+    dryrun) # option
       # Enable dryrun mode
       do_dryrun="true"
       ;;
-    *noautoconsole*)
+    noautoconsole)
       # Disable autoconsole
       do_autoconsole="false"
       ;;
-    *autoconsole*)
+    autoconsole)
       # Enable autoconsole
       do_autoconsole="true"
       ;;
-    *noautostart*)
+    noautostart)
       # Disable autoconsole
       do_autostart="false"
       ;;
-    *autostart*)
+    autostart)
       # Enable autoconsole
       do_autostart="true"
       ;;
-    *nobacking*) # option
+    nobacking) # option
       # Enable strict mode
       do_backing="false"
       ;;
@@ -589,11 +613,19 @@ process_options () {
       print_usage "options"
       exit
       ;;
-    *strict*) # option
+    noreboot)
+      # Disable reboot
+      do_reboot="false"
+      ;;
+    reboot)
+      # Disable reboot
+      do_reboot="true"
+      ;;
+    strict) # option
       # Enable strict mode
       do_strict="true"
       ;;
-    *verbose*) # option
+    verbose) # option
       # Enable verbose mode
       do_verbose="true"
       ;;
@@ -733,11 +765,11 @@ while test $# -gt 0; do
       do_options="true"
       shift 2
       ;;
-    --osinfo) # switch
-      # OS info of image
+    --osvariant) # switch
+      # Os variant
       check_value "$1" "$2"
-      vm_osinfo="$2"
-      shift 2
+      vm_osvariant="$2"
+      shift 2      
       ;;
     --osvers) # switch
       # OS version of image
@@ -843,7 +875,7 @@ fi
 if [ "$do_stop_vm" = "true" ]; then
   stop_vm "$vm_name"
 fi
-if [ "$$do_delete_vm" = "true" ]; then
+if [ "$do_delete_vm" = "true" ]; then
   delete_vm
 fi
 if [ "$do_delete_pool" = "true" ]; then

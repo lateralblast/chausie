@@ -34,3 +34,7 @@
 # Fixed code to delete pool
 # 0.1.8: Sat 24 Aug 2024 19:22:39 AEST
 # Added check for virt-manager cache directory
+# 0.1.9: Sat 24 Aug 2024 20:23:00 AEST
+# Bug fixes and added os-variant
+# 0.2.0: Sun 25 Aug 2024 18:18:36 AEST
+# Added code to delete VM
