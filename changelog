@@ -38,3 +38,5 @@
 # Bug fixes and added os-variant
 # 0.2.0: Sun 25 Aug 2024 18:18:36 AEST
 # Added code to delete VM
+# 0.2.1: Sun 25 Aug 2024 18:42:43 AEST
+# Added code to connect/console to VM

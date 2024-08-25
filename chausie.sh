@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.0
+# Version:      0.2.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -475,6 +475,19 @@ stop_vm () {
   fi
 }
 
+# Connect to VM
+
+connect_to_vm () {
+  vm_name="$1"
+  command="virsh console $vm_name"
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    execute_command "$command" "linuxsu"
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
 # Reset defaults
 
 reset_defaults () {
@@ -530,6 +543,10 @@ process_actions () {
     *config) # action
       # Check config
       do_check_config="true"
+      ;;
+    connect|console)
+      # Connect to VM
+      do_connect="true"
       ;;
     createpool) # action
       # Create pool
@@ -880,4 +897,7 @@ if [ "$do_delete_vm" = "true" ]; then
 fi
 if [ "$do_delete_pool" = "true" ]; then
   delete_pool "$pool_name"
+fi
+if [ "$do_connect" = "true" ]; then
+  connect_to_vm "$vm_name"
 fi
