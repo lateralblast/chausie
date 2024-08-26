@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.1
+# Version:      0.2.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -34,7 +34,6 @@ mod_path="$script_path/modules"
 print_help () {
   script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" )
   echo "Usage: $script_bin [OPTIONS...]"
-  echo ""
   echo "$script_help"
   echo ""
 }
@@ -149,6 +148,7 @@ set_defaults () {
   do_dryrun="false"
   do_debug="false"
   do_force="false"
+  do_post="false"
   do_shellcheck="false"
   do_backing="true"
   do_create_vm="false"
@@ -170,6 +170,7 @@ set_defaults () {
   vm_graphics="none"
   vm_arch="$os_arch"
   vm_osvariant=""
+  post_script="$script_dir/scripts/post_install.sh"
   cache_dir="$os_home/.cache/virt-manager"
   if [ "$os_name" = "Darwin" ]; then
     if [ "$os_arch" = "arm64" ]; then
@@ -193,7 +194,7 @@ set_defaults () {
     vm_bridge="br0"
     virt_dir="/var/lib/libvirt"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
-    required_packages="virt-manager libosinfo-bin"
+    required_packages="virt-manager libosinfo-bin libguestfs-tools"
   fi
   image_dir="$virt_dir/images"
 }
@@ -488,6 +489,34 @@ connect_to_vm () {
   fi
 }
 
+# Read file into array and process
+
+execute_from_file () {
+  post_script="$1"
+  for line in "${(@f)"$(<$post_script)"}"; do
+    if [[ ! "$line" =~ "^#" ]]; then
+      execute_command "$line" ""
+    fi
+  done
+}
+
+# Customize VM
+
+customize_vm () {
+  vm_name="$1"
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    stop_vm "$vm_name"
+    if [ -f "$post_script" ]; then
+      execute_command "virt-customize " "linuxsu"
+    else
+      verbose_message "Post install script \"$post_script\" does not exist" "warn"
+    fi
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
 # Reset defaults
 
 reset_defaults () {
@@ -567,6 +596,10 @@ process_actions () {
       do_check_config="true"
       do_delete_pool="true"
       do_delete_vm="true"
+      ;;
+    customize|post*)
+      # Do postinstall config
+      do_post="true"
       ;;
     shellcheck) # action
       # Check script with shellcheck
@@ -802,8 +835,14 @@ while test $# -gt 0; do
       ;;
     --pooldir) # switch
       # Pool directory
-      check_value "$2"
+      check_value "$1" "$2"
       pool_dir="$2"
+      shift 2
+      ;;
+    --postscript)
+      # Post install script
+      check_value "$1" "$2"
+      post_script="$2"
       shift 2
       ;;
     --ram) # switch
@@ -900,4 +939,7 @@ if [ "$do_delete_pool" = "true" ]; then
 fi
 if [ "$do_connect" = "true" ]; then
   connect_to_vm "$vm_name"
+fi
+if [ "$do_post" = "true" ]; then
+  customize_vm $vm_name
 fi
