@@ -42,3 +42,5 @@
 # Added code to connect/console to VM
 # 0.2.2: Mon 26 Aug 2024 21:33:37 AEST
 # Initial support for post install config
+# 0.2.3: Mon Aug 26 10:24:53 PM AEST 2024
+# Fixed bugs

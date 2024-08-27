@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.2
+# Version:      0.2.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -21,6 +21,7 @@ script_name="chausie"
 script_path=$( pwd )
 script_bin=$( basename "$0" |sed "s/^\.\///g")
 script_file="$script_path/$script_bin"
+script_dir=$( dirname "$script_file" )
 script_vers=$( grep '^# Version' < "$0" | awk '{print $3}' )
 os_name=$( uname )
 os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
@@ -162,6 +163,10 @@ set_defaults () {
   do_autoconsole="false"
   do_autostart="false"
   do_reboot="false"
+  do_connect="false"
+  do_list_vms="false"
+  do_list_pools="false"
+  do_list_nets="false"
   vm_cpus="2"
   vm_ram="4096"
   vm_size="20G"
@@ -517,6 +522,24 @@ customize_vm () {
   fi
 }
 
+# List VMs
+
+list_vms () {
+  execute_command "virsh list --all" "linuxsu"
+}
+
+# List Pools
+
+list_pools () {
+  execute_command "virsh pool-list --all" "linuxsu"
+}
+
+# List Nets
+
+list_nets () {
+  execute_command "virsh net-list --all" "linuxsu"
+}
+
 # Reset defaults
 
 reset_defaults () {
@@ -657,6 +680,18 @@ process_options () {
     nobacking) # option
       # Enable strict mode
       do_backing="false"
+      ;;
+    listvms)
+      # List VMs
+      do_list_vms="true"
+      ;;
+    listpools)
+      # List VMs
+      do_list_pools="true"
+      ;;
+    listnets)
+      # List nets
+      do_list_nets="true"
       ;;
     options|help) # option
       # Print options help
@@ -889,7 +924,7 @@ while test $# -gt 0; do
       break
       ;;
     *)
-      print_usage
+      print_usage ""
       exit
       ;;
   esac
@@ -942,4 +977,13 @@ if [ "$do_connect" = "true" ]; then
 fi
 if [ "$do_post" = "true" ]; then
   customize_vm $vm_name
+fi
+if [ "$do_list_vms" = "true" ]; then
+  list_vms
+fi
+if [ "$do_list_pools" = "true" ]; then
+  list_pools
+fi
+if [ "$do_list_nets" = "true" ]; then
+  list_nets
 fi
