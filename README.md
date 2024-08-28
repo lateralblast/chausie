@@ -133,11 +133,17 @@ Actions:
  *config)
  - Check config
 
+ connect|console)
+ - Connect to VM
+
  createpool)
  - Create pool
 
  createvm)
  - Create VM
+
+ customize|post*)
+ - Do postinstall config
 
  deletepool)
  - Create pool
@@ -145,8 +151,23 @@ Actions:
  deletevm)
  - Create VM
 
+ listvm*)
+ - List VMs
+
+ listpool*)
+ - List VMs
+
+ listnet*)
+ - List nets
+
  shellcheck)
  - Check script with shellcheck
+
+ shutdown*|stop*)
+ - Stop VM
+
+ start*|boot*)
+ - Start VM
 
  version)
  - Print version
@@ -160,11 +181,29 @@ Options:
  dryrun)
  - Enable dryrun mode
 
+ noautoconsole)
+ - Disable autoconsole
+
+ autoconsole)
+ - Enable autoconsole
+
+ noautostart)
+ - Disable autoconsole
+
+ autostart)
+ - Enable autoconsole
+
  nobacking)
  - Enable strict mode
 
  options|help)
  - Print options help
+
+ noreboot)
+ - Disable reboot
+
+ reboot)
+ - Disable reboot
 
  strict)
  - Enable strict mode
