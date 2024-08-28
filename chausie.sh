@@ -190,6 +190,7 @@ set_defaults () {
   vm_graphics="none"
   vm_arch="$os_arch"
   vm_osvariant=""
+  vm_command=""
   source_file=""
   dest_file=""
   post_script="$script_dir/scripts/post_install.sh"
