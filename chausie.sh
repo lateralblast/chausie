@@ -16,6 +16,8 @@
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
 
+# Set/get some environment parameters
+
 script_args="$*"
 script_name="chausie"
 script_path=$( pwd )
@@ -29,6 +31,8 @@ os_user=$( whoami )
 os_group=$( id -gn )
 os_home="$HOME"
 mod_path="$script_path/modules"
+
+export LIBGUESTFS_BACKEND=direct
 
 # Print help
 
