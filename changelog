@@ -46,3 +46,5 @@
 # Fixed bugs
 # 0.2.4: Wed Aug 28 01:53:58 PM AEST 2024
 # Fixed list actions
+# 0.2.4: Wed 28 Aug 2024 15:24:02 AEST
+# Added initial code to inject SSH file into image

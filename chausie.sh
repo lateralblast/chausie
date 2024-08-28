@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.4
+# Version:      0.2.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -39,6 +39,13 @@ print_help () {
   echo "$script_help"
   echo ""
 }
+
+# If given no arguments print help
+
+if [ "$script_args" = "" ]; then
+  print_help
+  exit
+fi
 
 # Print actions
 
@@ -145,6 +152,8 @@ set_defaults () {
   pool_name=""
   pool_dir=""
   release_dir=""
+  ssh_user=""
+  ssh_key=""
   do_actions="false"
   do_options="false"
   do_verbose="false"
@@ -170,6 +179,7 @@ set_defaults () {
   do_list_vms="false"
   do_list_pools="false"
   do_list_nets="false"
+  do_inject_key="false"
   vm_cpus="2"
   vm_ram="4096"
   vm_size="20G"
@@ -257,21 +267,6 @@ execute_command () {
   fi
 }
 
-# Handle verbose and debug early so it's enabled early
-
-if [[ "$*" =~ "strict" ]]; then
-  do_verbose="true"
-  set -u
-else
-  do_verbose="false"
-fi
-
-if [[ "$*" =~ "debug" ]]; then
-  do_verbose="true"
-  set -x
-else
-  do_verbose="false"
-fi
 
 # Load modules
 
@@ -283,13 +278,6 @@ if [ -d "$mod_path" ]; then
     fi
     . "$module"
   done
-fi
-
-# If given no arguments print help
-
-if [ "$script_args" = "" ]; then
-  print_help
-  exit
 fi
 
 # Check config
@@ -497,6 +485,24 @@ connect_to_vm () {
   fi
 }
 
+inject_key () {
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    stop_vm "$vm_name"
+    if [ -f "$ssh_key" ]; then
+      if [ -f "$vm_disk" ]; then
+        execute_command "virt-customize -a $vm_disk --ssh-inject $ssh_user:file:$ssh_key" "linuxsu"
+      else
+        verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
+      fi
+    else
+      verbose_message "SSH key file \"$ssh_key\" does not exist" "warn"
+    fi
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
 # Read file into array and process
 
 execute_from_file () {
@@ -549,39 +555,59 @@ reset_defaults () {
   if [ "$do_debug" = "true" ]; then
     set -x
   fi
+  verbose_message "Enabling debug mode" "notice"
   if [ "$do_strict" = "true" ]; then
     set -u
   fi
+  verbose_message "Enabling strict mode" "notice"
   if [ "$vm_arch" = "" ]; then
     vm_arch="$os_arch"
   fi
+  verbose_message "Setting VM arch to \"$vm_arch\"" "notice"
   if [ "$vm_name" = "" ]; then
     vm_name="$script_name"
   fi
+  verbose_message "Setting VM name to \"$vm_name\"" "notice"
   if [ "$image_file" = "" ]; then
     image_file="ubuntu-$os_vers-server-cloudimg-$os_arch.img"
   fi
+  verbose_message "Setting Cloud Image file to \"$image_file\"" "notice"
   if [ "$image_url" = "" ]; then
     image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
   fi
+  verbose_message "Setting Cloud Image URL to \"$image_file\"" "notice"
   if [ "$image_dir" = "" ]; then
     image_dir="$virt_dir/images"
   fi
+  verbose_message "Setting Image directory to \"$image_dir\"" "notice"
   if [ "$vm_disk" = "" ]; then
     vm_disk="$image_dir/$vm_name/$vm_name.qcow2"
   fi
+  verbose_message "Setting VM disk to \"$vm_disk\"" "notice"
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
   fi
+  verbose_message "Setting pool name to \"$pool_name\"" "notice"
   if [ "$pool_dir" = "" ]; then
     pool_dir="$image_dir/$pool_name"
   fi
+  verbose_message "Setting pool directory to \"$pool_dir\"" "notice"
   if [ "$release_dir" = "" ]; then
     release_dir="$image_dir/releases"
   fi
+  verbose_message "Setting release directory to \"$release_dir\"" "notice"
   if [ "$vm_osvariant" = "" ]; then
     vm_osvariant="ubuntu$os_vers"
   fi
+  verbose_message "Setting VM OS variant to \"$vm_osvariant\"" "notice"
+  if [ "$ssh_user" = "" ]; then
+    ssh_user="ubuntu"
+  fi
+  verbose_message "Setting SSH user to \"$ssh_user\"" "notice"
+  if [ "$ssh_key" = "" ]; then
+    ssh_key="$os_home/.ssh/id_rsa.pub"
+  fi
+  verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
   create_libvirt_dir "$release_dir"
 }
 
@@ -626,6 +652,10 @@ process_actions () {
       do_check_config="true"
       do_delete_pool="true"
       do_delete_vm="true"
+      ;;
+    *inject*) # action
+      # Inject SSH key
+      do_inject_key="true"
       ;;
     listvm*) # action
       # List VMs
@@ -731,6 +761,22 @@ process_options () {
 # Set defaults
 
 set_defaults
+
+# Handle verbose and debug early so it's enabled early
+
+if [[ "$*" =~ "strict" ]]; then
+  do_verbose="true"
+  set -u
+fi
+
+if [[ "$*" =~ "debug" ]]; then
+  do_verbose="true"
+  set -x
+fi
+
+if [[ "$*" =~ "verbose" ]]; then
+  do_verbose="true"
+fi
 
 # Handle commandline arguments
 
@@ -877,7 +923,7 @@ while test $# -gt 0; do
       pool_dir="$2"
       shift 2
       ;;
-    --postscript)
+    --postscript) #switch
       # Post install script
       check_value "$1" "$2"
       post_script="$2"
@@ -895,10 +941,22 @@ while test $# -gt 0; do
       vm_size="$2"
       shift 2
       ;;
-    --shellcheck)
+    --shellcheck) #switch
       # Run shellcheck on script
       do_shellcheck="true"
       shift
+      ;;
+    --sshkey) # switch
+      # SSH username
+      check_value "$1" "$2"
+      ssh_key="$2"
+      shift 2
+      ;;
+    --sshuser) # switch
+      # SSH username
+      check_value "$1" "$2"
+      ssh_user="$2"
+      shift 2
       ;;
     --strict) # switch
       # Run in strict mode
@@ -934,6 +992,7 @@ while test $# -gt 0; do
 done
 
 reset_defaults
+
 if [ "$do_shellcheck" = "true" ]; then
   check_shellcheck
   exit
@@ -989,4 +1048,7 @@ if [ "$do_list_pools" = "true" ]; then
 fi
 if [ "$do_list_nets" = "true" ]; then
   list_nets
+fi
+if [ "$do_inject_key" = "true" ]; then
+  inject_key
 fi
