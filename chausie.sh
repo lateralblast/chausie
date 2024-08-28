@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.3
+# Version:      0.2.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -613,6 +613,10 @@ process_actions () {
       do_create_pool="true"
       do_create_vm="true"
       ;;
+    customize|post*)
+      # Do postinstall config
+      do_post="true"
+      ;;
     deletepool) # action
       # Create pool
       do_delete_pool="true"
@@ -623,9 +627,17 @@ process_actions () {
       do_delete_pool="true"
       do_delete_vm="true"
       ;;
-    customize|post*)
-      # Do postinstall config
-      do_post="true"
+    listvm*)
+      # List VMs
+      do_list_vms="true"
+      ;;
+    listpool*)
+      # List VMs
+      do_list_pools="true"
+      ;;
+    listnet*)
+      # List nets
+      do_list_nets="true"
       ;;
     shellcheck) # action
       # Check script with shellcheck
@@ -683,18 +695,6 @@ process_options () {
     nobacking) # option
       # Enable strict mode
       do_backing="false"
-      ;;
-    listvms)
-      # List VMs
-      do_list_vms="true"
-      ;;
-    listpools)
-      # List VMs
-      do_list_pools="true"
-      ;;
-    listnets)
-      # List nets
-      do_list_nets="true"
       ;;
     options|help) # option
       # Print options help

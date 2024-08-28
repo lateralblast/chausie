@@ -7,7 +7,7 @@
 # 0.0.4: Thu 22 Aug 2024 10:41:42 AEST
 # Added code to check parameter values
 # 0.0.5: Thu 22 Aug 2024 10:42:55 AEST
-# Fixed code to create pools 
+# Fixed code to create pools
 # 0.0.6: Thu 22 Aug 2024 11:46:58 AEST
 # Added action switch and documentation
 # 0.0.7: Thu 22 Aug 2024 13:34:12 AEST
@@ -44,3 +44,5 @@
 # Initial support for post install config
 # 0.2.3: Mon Aug 26 10:24:53 PM AEST 2024
 # Fixed bugs
+# 0.2.4: Wed Aug 28 01:53:58 PM AEST 2024
+# Fixed list actions
