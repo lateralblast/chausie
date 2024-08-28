@@ -61,6 +61,9 @@ Usage: chausie.sh [OPTIONS...]
  --debug)
  - Run in debug mode
 
+ --dest|--destination|--destfile|--destinationfile)
+ - Destination of file to copy into VM disk
+
  --disk)
  - VM disk file
 
@@ -112,6 +115,15 @@ Usage: chausie.sh [OPTIONS...]
  --size)
  - Size of VM disk
 
+ --source|--sourcefile)
+ - Source file to copy into VM disk
+
+ --sshkey)
+ - SSH username
+
+ --sshuser)
+ - SSH username
+
  --strict)
  - Run in strict mode
 
@@ -136,6 +148,9 @@ Actions:
  connect|console)
  - Connect to VM
 
+ copy|upload)
+ - Copy file to VM
+
  createpool)
  - Create pool
 
@@ -151,6 +166,9 @@ Actions:
  deletevm)
  - Create VM
 
+ *inject*)
+ - Inject SSH key
+
  listvm*)
  - List VMs
 
@@ -159,6 +177,9 @@ Actions:
 
  listnet*)
  - List nets
+
+ run*)
+ - Run command in VM
 
  shellcheck)
  - Check script with shellcheck
