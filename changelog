@@ -54,3 +54,5 @@
 # Added support to run command in image
 # 0.2.7: Wed 28 Aug 2024 19:47:17 AEST
 # Added support to change image password
+# 0.2.8: Wed Aug 28 10:06:08 PM AEST 2024
+# Fixed code to get image

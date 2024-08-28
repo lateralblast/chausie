@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.7
+# Version:      0.2.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -129,7 +129,7 @@ check_packages () {
       if [ "$os_name" = "Darwin" ]; then
         execute_command "brew install $package" ""
       else
-        execute_command "apt get install $package" "su"
+        execute_command "apt-get install $package" "su"
       fi
     fi
   done
@@ -351,14 +351,14 @@ delete_libvirt_dir () {
 # Get image
 
 get_image () {
-  if [ "$image_dir" = "" ]; then
-    image_dir="$virt_dir/images"
+  if [ "$release_dir" = "" ]; then
+    release_dir="$image_dir/releases"
   fi
-  create_libvirt_dir "$image_dir"
-  if [ ! -f "$image_dir/$image_file" ]; then
-    execute_command "cd $image_dir ; wget $image_url" "linuxsu"
+  create_libvirt_dir "$release_dir"
+  if [ ! -f "$release_dir/$image_file" ]; then
+    execute_command "cd $release_dir ; wget $image_url" "linuxsu"
   else
-    verbose_message "Cloud Image \"$image_file\" already exists" "notice"
+    verbose_message "Cloud Image \"$release_dir/$image_file\" already exists" "notice"
   fi
 }
 
@@ -392,11 +392,11 @@ delete_pool () {
 # Create VM
 
 create_vm () {
-  if [ ! -f "$image_dir/$image_file" ]; then
-    verbose_message "Cloud Image file \"$image_dir/$image_file\" does not exist" "warn"
+  if [ ! -f "$release_dir/$image_file" ]; then
+    verbose_message "Cloud Image file \"$release_dir/$image_file\" does not exist" "warn"
     do_exit
   else
-    verbose_message "Found Cloud Image file \"$image_dir/$image_file\"" "info"
+    verbose_message "Found Cloud Image file \"$release_dir/$image_file\"" "info"
   fi
   if [ -f "$vm_disk" ]; then
     verbose_message "VM disk file \"$vm_disk\" already exists" "warn"
@@ -698,6 +698,7 @@ process_actions () {
       ;;
     createvm) # action
       # Create VM
+      do_get_image="true"
       do_check_config="true"
       do_create_pool="true"
       do_create_vm="true"
@@ -716,6 +717,10 @@ process_actions () {
       do_delete_pool="true"
       do_delete_vm="true"
       ;;
+    getimage) # action
+      # Get image
+      do_get_image="true"
+      ;; 
     *inject*) # action
       # Inject SSH key
       do_inject_key="true"
