@@ -52,3 +52,5 @@
 # Added upload function
 # 0.2.6: Wed 28 Aug 2024 18:00:06 AEST
 # Added support to run command in image
+# 0.2.7: Wed 28 Aug 2024 19:47:17 AEST
+# Added support to change image password

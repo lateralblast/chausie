@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.6
+# Version:      0.2.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -152,7 +152,6 @@ set_defaults () {
   pool_name=""
   pool_dir=""
   release_dir=""
-  ssh_user=""
   ssh_key=""
   do_actions="false"
   do_options="false"
@@ -177,11 +176,12 @@ set_defaults () {
   do_autostart="false"
   do_reboot="false"
   do_connect="false"
-  do_upload="true"
+  do_upload="false"
   do_list_vms="false"
   do_list_pools="false"
   do_list_nets="false"
   do_inject_key="false"
+  do_password="false"
   vm_cpus="2"
   vm_ram="4096"
   vm_size="20G"
@@ -191,6 +191,8 @@ set_defaults () {
   vm_arch="$os_arch"
   vm_osvariant=""
   vm_command=""
+  vm_username=""
+  vm_password=""
   source_file=""
   dest_file=""
   post_script="$script_dir/scripts/post_install.sh"
@@ -496,7 +498,7 @@ inject_key () {
     stop_vm "$vm_name"
     if [ -f "$ssh_key" ]; then
       if [ -f "$vm_disk" ]; then
-        execute_command "virt-customize -a $vm_disk --ssh-inject $ssh_user:file:$ssh_key" "linuxsu"
+        execute_command "virt-customize -a $vm_disk --ssh-inject $vm_username:file:$ssh_key" "linuxsu"
       else
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
       fi
@@ -534,6 +536,23 @@ run_command () {
   if [[ "$vm_check" = "1" ]]; then
     if [ -f "$vm_disk" ]; then
       execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
+    else
+      verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
+    fi
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
+# Set password
+
+set_password () {
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    if [ -f "$vm_disk" ]; then
+      if [ "$vm_username" = "root" ]; then
+        execute_command "virt-customize -a $vm_disk --root-password password:$vm_password" "linuxsu"
+      fi
     else
       verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
     fi
@@ -628,10 +647,18 @@ reset_defaults () {
     vm_osvariant="ubuntu$os_vers"
   fi
   verbose_message "Setting VM OS variant to \"$vm_osvariant\"" "notice"
-  if [ "$ssh_user" = "" ]; then
-    ssh_user="ubuntu"
+  if [ "$vm_username" = "" ]; then
+    if [ "$do_password" = "true" ]; then
+      vm_username="root"
+    else
+      vm_username="ubuntu"
+    fi
   fi
-  verbose_message "Setting SSH user to \"$ssh_user\"" "notice"
+  verbose_message "Setting username to \"$vm_username\"" "notice"
+  if [ "$vm_password" = "" ]; then
+    vm_password="ubuntu"
+  fi
+  verbose_message "Setting password to \"$vm_password\"" "notice"
   if [ "$ssh_key" = "" ]; then
     ssh_key="$os_home/.ssh/id_rsa.pub"
   fi
@@ -700,6 +727,10 @@ process_actions () {
     listnet*) # action
       # List nets
       do_list_nets="true"
+      ;;
+    *password*) # action
+      # Set password for user in VM
+      do_password="true"
       ;;
     run*) # action
       # Run command in VM
@@ -953,6 +984,12 @@ while test $# -gt 0; do
       os_vers="$2"
       shift 2
       ;;
+    --password) # switch
+      # Password
+      check_value "$1" "$2"
+      vm_password="$2"
+      shift 2
+      ;;
     --poolname) # switch
       # Pool name
       check_value "$1" "$2"
@@ -1006,16 +1043,16 @@ while test $# -gt 0; do
       ssh_key="$2"
       shift 2
       ;;
-    --sshuser) # switch
-      # SSH username
-      check_value "$1" "$2"
-      ssh_user="$2"
-      shift 2
-      ;;
     --strict) # switch
       # Run in strict mode
       do_strict="true"
       shift
+      ;;
+    --user|--username) # switch
+      # Username
+      check_value "$1" "$2"
+      vm_username="$2"
+      shift 2
       ;;
     --verbose) # switch
       # Run in verbose mode
@@ -1045,8 +1082,6 @@ while test $# -gt 0; do
   esac
 done
 
-reset_defaults
-
 if [ "$do_shellcheck" = "true" ]; then
   check_shellcheck
   exit
@@ -1054,6 +1089,9 @@ fi
 if [ "$do_actions" = "true" ]; then
   process_actions "$actions"
 fi
+
+reset_defaults
+
 if [ "$do_options" = "true" ]; then
   if [[ "$options" =~ "," ]]; then
     IFS="," read -r -a array <<< "$options"
@@ -1111,4 +1149,7 @@ if [ "$do_upload" = "true" ]; then
 fi
 if [ "$do_command" = "true" ]; then
   run_command
+fi
+if [ "$do_password" = "true" ]; then
+  set_password
 fi
