@@ -48,3 +48,5 @@
 # Fixed list actions
 # 0.2.4: Wed 28 Aug 2024 15:24:02 AEST
 # Added initial code to inject SSH file into image
+# 0.2.5: Wed 28 Aug 2024 17:37:29 AEST
+# Added upload function

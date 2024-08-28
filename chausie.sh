@@ -176,6 +176,7 @@ set_defaults () {
   do_autostart="false"
   do_reboot="false"
   do_connect="false"
+  do_upload="true"
   do_list_vms="false"
   do_list_pools="false"
   do_list_nets="false"
@@ -188,6 +189,8 @@ set_defaults () {
   vm_graphics="none"
   vm_arch="$os_arch"
   vm_osvariant=""
+  source_file=""
+  dest_file=""
   post_script="$script_dir/scripts/post_install.sh"
   cache_dir="$os_home/.cache/virt-manager"
   if [ "$os_name" = "Darwin" ]; then
@@ -503,6 +506,25 @@ inject_key () {
   fi
 }
 
+# Upload file
+
+upload_file () {
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    if [ -f "$source_file" ]; then
+      if [ -f "$vm_disk" ]; then
+        execute_command "virt-customize -a $vm_disk --upload $source_file:$dest_file" "linuxsu"
+      else
+        verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
+      fi
+    else
+      verbose_message "Source file \"$source_file\" does not exist" "warn"
+    fi
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
 # Read file into array and process
 
 execute_from_file () {
@@ -628,6 +650,10 @@ process_actions () {
     connect|console) # action
       # Connect to VM
       do_connect="true"
+      ;;
+    copy|upload) # action
+      # Copy file to VM
+      do_upload="true"
       ;;
     createpool) # action
       # Create pool
@@ -835,6 +861,12 @@ while test $# -gt 0; do
       do_debug="true"
       shift
       ;;
+    --dest|--destination|--destfile|--destinationfile) # switch
+      # Destination of file to copy into VM disk
+      check_value "$1" "$2"
+      dest_file="$2"
+      shift 2
+      ;;
     --disk) # switch
       # VM disk file
       check_value "$1" "$2"
@@ -946,6 +978,12 @@ while test $# -gt 0; do
       do_shellcheck="true"
       shift
       ;;
+    --source|--sourcefile) # switch
+      # Source file to copy into VM disk
+      check_value "$1" "$2"
+      source_file="$2"
+      shift 2
+      ;;
     --sshkey) # switch
       # SSH username
       check_value "$1" "$2"
@@ -1051,4 +1089,7 @@ if [ "$do_list_nets" = "true" ]; then
 fi
 if [ "$do_inject_key" = "true" ]; then
   inject_key
+fi
+if [ "$do_upload" = "true" ]; then
+  upload_file
 fi
