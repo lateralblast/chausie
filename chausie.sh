@@ -599,7 +599,7 @@ process_actions () {
       # Check config
       do_check_config="true"
       ;;
-    connect|console)
+    connect|console) # action
       # Connect to VM
       do_connect="true"
       ;;
@@ -613,7 +613,7 @@ process_actions () {
       do_create_pool="true"
       do_create_vm="true"
       ;;
-    customize|post*)
+    customize|post*) # action
       # Do postinstall config
       do_post="true"
       ;;
@@ -627,15 +627,15 @@ process_actions () {
       do_delete_pool="true"
       do_delete_vm="true"
       ;;
-    listvm*)
+    listvm*) # action
       # List VMs
       do_list_vms="true"
       ;;
-    listpool*)
+    listpool*) # action
       # List VMs
       do_list_pools="true"
       ;;
-    listnet*)
+    listnet*) # action
       # List nets
       do_list_nets="true"
       ;;
@@ -643,11 +643,11 @@ process_actions () {
       # Check script with shellcheck
       do_shellcheck="true"
       ;;
-    shutdown*|stop*)
+    shutdown*|stop*) # action
       # Stop VM
       do_stop_vm="true"
       ;;
-    start*|boot*)
+    start*|boot*) # action
       # Start VM
       do_start_vm="true"
       ;;
@@ -676,19 +676,19 @@ process_options () {
       # Enable dryrun mode
       do_dryrun="true"
       ;;
-    noautoconsole)
+    noautoconsole) # option
       # Disable autoconsole
       do_autoconsole="false"
       ;;
-    autoconsole)
+    autoconsole) # option
       # Enable autoconsole
       do_autoconsole="true"
       ;;
-    noautostart)
+    noautostart) # option
       # Disable autoconsole
       do_autostart="false"
       ;;
-    autostart)
+    autostart) # option
       # Enable autoconsole
       do_autostart="true"
       ;;
@@ -701,11 +701,11 @@ process_options () {
       print_usage "options"
       exit
       ;;
-    noreboot)
+    noreboot) # option
       # Disable reboot
       do_reboot="false"
       ;;
-    reboot)
+    reboot) # option
       # Disable reboot
       do_reboot="true"
       ;;
