@@ -50,3 +50,5 @@
 # Added initial code to inject SSH file into image
 # 0.2.5: Wed 28 Aug 2024 17:37:29 AEST
 # Added upload function
+# 0.2.6: Wed 28 Aug 2024 18:00:06 AEST
+# Added support to run command in image

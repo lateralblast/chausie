@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.5
+# Version:      0.2.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -162,6 +162,7 @@ set_defaults () {
   do_debug="false"
   do_force="false"
   do_post="false"
+  do_command="false"
   do_shellcheck="false"
   do_backing="true"
   do_create_vm="false"
@@ -525,15 +526,19 @@ upload_file () {
   fi
 }
 
-# Read file into array and process
+# Run command
 
-execute_from_file () {
-  post_script="$1"
-  for line in "${(@f)"$(<$post_script)"}"; do
-    if [[ ! "$line" =~ "^#" ]]; then
-      execute_command "$line" ""
+run_command () {
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]]; then
+    if [ -f "$vm_disk" ]; then
+      execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
+    else
+      verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
     fi
-  done
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
 }
 
 # Customize VM
@@ -694,6 +699,10 @@ process_actions () {
     listnet*) # action
       # List nets
       do_list_nets="true"
+      ;;
+    run*) # action
+      # Run command in VM
+      do_command="true"
       ;;
     shellcheck) # action
       # Check script with shellcheck
@@ -967,6 +976,12 @@ while test $# -gt 0; do
       vm_ram="$2"
       shift 2
       ;;
+    --run|runcommand) # swith
+      # Command to run in VM image
+      check_value "$1" "$2"
+      vm_command="$2"
+      shift 2
+      ;;
     --size) # switch
       # Size of VM disk
       check_value "$1" "$2"
@@ -1092,4 +1107,7 @@ if [ "$do_inject_key" = "true" ]; then
 fi
 if [ "$do_upload" = "true" ]; then
   upload_file
+fi
+if [ "$do_command" = "true" ]; then
+  run_command
 fi

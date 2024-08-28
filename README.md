@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.2.5
+Current version 0.2.6
 
 Prerequisites
 -------------
