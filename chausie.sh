@@ -33,8 +33,9 @@ mod_path="$script_path/modules"
 # Print help
 
 print_help () {
-  script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" )
+  script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
   echo "Usage: $script_bin [OPTIONS...]"
+  echo "-----"
   echo "$script_help"
   echo ""
 }
@@ -42,8 +43,9 @@ print_help () {
 # Print actions
 
 print_actions () {
-  script_actions=$( grep -A1 "# action" "$script_file" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -Ev "=|echo" )
+  script_actions=$( grep -A1 "# action" "$script_file" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
   echo "Actions:"
+  echo "-------"
   echo "$script_actions"
   echo ""
 }
@@ -51,8 +53,9 @@ print_actions () {
 # Print options
 
 print_options () {
-  script_options=$( grep -A1 "# option" "$script_file" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -Ev "=|echo" )
+  script_options=$( grep -A1 "# option" "$script_file" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
   echo "Options:"
+  echo "-------"
   echo "$script_options"
   echo ""
 }
@@ -135,7 +138,7 @@ check_shellcheck () {
 set_defaults () {
   vm_name=""
   vm_disk=""
-  image_name="" 
+  image_name=""
   image_file=""
   image_dir=""
   image_url=""
@@ -317,7 +320,7 @@ check_config () {
 
 fix_libvirt_perms () {
   file_name="$1"
-  if [ "$os_name" = "Linux" ]; then 
+  if [ "$os_name" = "Linux" ]; then
     execute_command "chown root:libvirt $file_name" "su"
     execute_command "chmod 770 $file_name" "su"
   fi
@@ -326,7 +329,7 @@ fix_libvirt_perms () {
 # Create libvirt dir
 
 create_libvirt_dir () {
-  new_dir="$1" 
+  new_dir="$1"
   if [ ! -d "$new_dir" ]; then
     execute_command "mkdir -p $new_dir" "linuxsu"
     fix_libvirt_perms "$new_dir"
@@ -338,7 +341,7 @@ create_libvirt_dir () {
 # Delete libvirt dir
 
 delete_libvirt_dir () {
-  new_dir="$1" 
+  new_dir="$1"
   if [ -d "$new_dir" ] && [ "$new_dir" != "/" ]; then
     execute_command "rm -rf $new_dir" "linuxsu"
   else
@@ -390,7 +393,7 @@ delete_pool () {
 # Create VM
 
 create_vm () {
-  if [ ! -f "$image_dir/$image_file" ]; then 
+  if [ ! -f "$image_dir/$image_file" ]; then
     verbose_message "Cloud Image file \"$image_dir/$image_file\" does not exist" "warn"
     do_exit
   else
@@ -722,7 +725,7 @@ process_options () {
     *)
       print_usage "options"
       ;;
-  esac    
+  esac
 }
 
 # Set defaults
@@ -854,7 +857,7 @@ while test $# -gt 0; do
       # Os variant
       check_value "$1" "$2"
       vm_osvariant="$2"
-      shift 2      
+      shift 2
       ;;
     --osvers) # switch
       # OS version of image
