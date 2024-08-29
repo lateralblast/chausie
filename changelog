@@ -56,3 +56,5 @@
 # Added support to change image password
 # 0.2.8: Wed Aug 28 10:06:08 PM AEST 2024
 # Fixed code to get image
+# 0.2.9: Thu Aug 29 09:19:22 PM AEST 2024
+# Fixed network switch for virt-install

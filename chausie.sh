@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.8
+# Version:      0.2.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -197,6 +197,8 @@ set_defaults () {
   vm_command=""
   vm_username=""
   vm_password=""
+  vm_net_type="bridge"
+  vm_net_bus="virtio"
   source_file=""
   dest_file=""
   post_script="$script_dir/scripts/post_install.sh"
@@ -429,7 +431,7 @@ create_vm () {
   if [ "$os_name" = "Darwin" ]; then
     cli_network=""
   else
-    cli_network="-nic vmnet-bridged,ifname=$vm_bridge"
+    cli_network="--network $vm_net_type=$vm_bridge,,bus=virtio"
   fi
   cli_osvariant="--os-variant $vm_osvariant"
   cli_graphics="--graphics $vm_graphics"
@@ -972,6 +974,18 @@ while test $# -gt 0; do
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
+      shift 2
+      ;;
+    --nettype) # switch
+      # Net type (e.g. bridge)
+      check_value "$1" "$2"
+      vm_net_type="$2"
+      shift 2
+      ;;
+    --netbus|netdriver) # switch
+      # Net bus/driver (e.g. virtio)
+      check_value "$1" "$2"
+      vm_net_bus="$2"
       shift 2
       ;;
     --options) # switch
