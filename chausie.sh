@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.2.9
+# Version:      0.3.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -407,9 +407,9 @@ create_vm () {
     verbose_message "Creating VM disk file \"$vm_disk\"" "info"
   fi
   if [ "$do_backing" = "true" ]; then
-    execute_command "qemu-img create -b $image_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
+    execute_command "qemu-img create -b $release_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
   else
-    execute_command "cp $image_dir/$image_file $vm_disk" "linuxsu"
+    execute_command "cp $release__dir/$image_file $vm_disk" "linuxsu"
     execute_command "qemu-img resize $vm_disk $vm_size" "linuxsu"
   fi
   fix_libvirt_perms "$vm_disk"

@@ -58,3 +58,5 @@
 # Fixed code to get image
 # 0.2.9: Thu Aug 29 09:19:22 PM AEST 2024
 # Fixed network switch for virt-install
+# 0.3.0: Thu 29 Aug 2024 21:24:13 AEST
+# Fixed bug with disk creation
