@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.0
+# Version:      0.3.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -431,7 +431,7 @@ create_vm () {
   if [ "$os_name" = "Darwin" ]; then
     cli_network=""
   else
-    cli_network="--network $vm_net_type=$vm_bridge,,bus=virtio"
+    cli_network="--network $vm_net_type=$vm_bridge,model=virtio"
   fi
   cli_osvariant="--os-variant $vm_osvariant"
   cli_graphics="--graphics $vm_graphics"
