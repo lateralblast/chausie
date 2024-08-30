@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.2
+# Version:      0.3.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -102,7 +102,7 @@ print_version () {
 # Exit routine
 
 do_exit () {
-  if [ ! "$do_dryrun" = "true" ]; then
+  if [ "$do_dryrun" = "false" ]; then
     exit
   fi
 }
@@ -373,7 +373,7 @@ create_pool () {
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ "$pool_name" ]]; then
     execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir 2> /dev/null" ""
-    fix_libvirt_perms "$pool-dir"
+    fix_libvirt_perms "$pool_dir"
 
   else
     verbose_message "Pool \"$pool_name\" already exists" "notice"aaaaaaaa
