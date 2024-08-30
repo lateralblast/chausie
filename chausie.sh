@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.1
+# Version:      0.3.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -322,7 +322,7 @@ check_config () {
 fix_libvirt_perms () {
   file_name="$1"
   if [ "$os_name" = "Linux" ]; then
-    execute_command "chown root:libvirt $file_name" "su"
+    execute_command "chown root:libvirt-qemu $file_name" "su"
     execute_command "chmod 770 $file_name" "su"
   fi
 }
@@ -373,8 +373,10 @@ create_pool () {
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ "$pool_name" ]]; then
     execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir 2> /dev/null" ""
+    fix_libvirt_perms "$pool-dir"
+
   else
-    verbose_message "Pool \"$pool_name\" already exists" "notice"
+    verbose_message "Pool \"$pool_name\" already exists" "notice"aaaaaaaa
   fi
 }
 
