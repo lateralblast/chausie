@@ -393,9 +393,21 @@ delete_pool () {
   delete_libvirt_dir "$pool_dir"
 }
 
+# Check VM bridge
+
+check_bridge () {
+  vm_bridge="$1"
+  bridge_check=$( ip link show $vm_bridge |grep "does not exist" |wc -c )
+  if [ ! "$bridge_check" = "0" ]; then
+    verbose_message "Bridge device \"$vm_bridge\" does not exist" "warn"
+    do_exit
+  fi
+}
+
 # Create VM
 
 create_vm () {
+  check_bridge "$vm_bridge"
   if [ ! -f "$release_dir/$image_file" ]; then
     verbose_message "Cloud Image file \"$release_dir/$image_file\" does not exist" "warn"
     do_exit

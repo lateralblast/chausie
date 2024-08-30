@@ -64,3 +64,5 @@
 # Fixed network switch for virt-install
 # 0.3.2: Fri 30 Aug 2024 14:11:36 AEST
 # Update for permissions check
+# 0.3.3: Fri Aug 30 02:54:37 PM AEST 2024
+# Added bridge check
