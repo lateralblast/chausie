@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.4
+# Version:      0.3.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -372,7 +372,7 @@ create_pool () {
   create_libvirt_dir "$pool_dir"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir 2> /dev/null" ""
+    execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir > /dev/null 2>&1" ""
     fix_libvirt_perms "$pool_dir"
 
   else
@@ -386,7 +386,7 @@ delete_pool () {
   pool_name="$1"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-destroy --pool $pool_name 2> /dev/null" ""
+    execute_command "virsh pool-destroy --pool $pool_name /dev/null 2>&1" ""
   else
     verbose_message "Pool \"$pool_name\" does not exist" "notice"
   fi
@@ -396,36 +396,53 @@ delete_pool () {
 # Check VM bridge
 
 check_bridge () {
-  vm_bridge="$1"
-  bridge_check=$( ip link show $vm_bridge |grep "does not exist" |wc -c )
+  bridge_check=$( ip link show $vm_bridge 2>&1 |grep "does not exist" |wc -c )
   if [ ! "$bridge_check" = "0" ]; then
     verbose_message "Bridge device \"$vm_bridge\" does not exist" "warn"
     do_exit
   fi
 }
 
-# Create VM
+# Check Cloud Image exists
 
-create_vm () {
-  check_bridge "$vm_bridge"
+check_image_exists () {
   if [ ! -f "$release_dir/$image_file" ]; then
     verbose_message "Cloud Image file \"$release_dir/$image_file\" does not exist" "warn"
     do_exit
   else
     verbose_message "Found Cloud Image file \"$release_dir/$image_file\"" "info"
-  fi
+  fi 
+}
+
+# Check VM disk exists
+
+check_disk_exists () {
   if [ -f "$vm_disk" ]; then
     verbose_message "VM disk file \"$vm_disk\" already exists" "warn"
     do_exit
   else
     verbose_message "Creating VM disk file \"$vm_disk\"" "info"
-  fi
+  fi  
+}
+
+# Create VM disk
+
+create_disk () {
   if [ "$do_backing" = "true" ]; then
     execute_command "qemu-img create -b $release_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
   else
     execute_command "cp $release__dir/$image_file $vm_disk" "linuxsu"
     execute_command "qemu-img resize $vm_disk $vm_size" "linuxsu"
   fi
+}
+
+# Create VM
+
+create_vm () {
+  check_bridge
+  check_image_exists
+  check_disk_exists
+  create_disk
   fix_libvirt_perms "$vm_disk"
   if [ "$do_autoconsole" = "false" ]; then
     cli_autoconsole="--noautoconsole"
@@ -467,7 +484,7 @@ create_vm () {
 delete_vm () {
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
-    execute_command "virsh undefine --nvram $vm_name" "linuxsu"
+    execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" doesn't exists" "notice"
   fi
