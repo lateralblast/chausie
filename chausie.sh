@@ -386,7 +386,7 @@ delete_pool () {
   pool_name="$1"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ "$pool_test" =~ "$pool_name" ]]; then
-    execute_command "virsh pool-destroy --pool $pool_name /dev/null 2>&1" ""
+    execute_command "virsh pool-destroy --pool $pool_name > /dev/null 2>&1" ""
   else
     verbose_message "Pool \"$pool_name\" does not exist" "notice"
   fi
