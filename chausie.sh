@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.8
+# Version:      0.3.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -187,53 +187,42 @@ set_defaults () {
   do_inject_key="false"
   do_password="false"
   do_network="false"
-  vm_cpus="2"
-  vm_ram="4096"
-  vm_size="20G"
-  os_vers="24.04"
-  vm_boot="uefi"
-  vm_graphics="none"
-  vm_arch="$os_arch"
+  do_hostname="false"
+  vm_dhcp="false"
+  vm_cpus=""
+  vm_ram=""
+  vm_size=""
+  os_vers=""
+  vm_boot=""
+  vm_graphics=""
+  vm_arch=""
   vm_osvariant=""
   vm_command=""
   vm_username=""
   vm_password=""
-  vm_net_type="bridge"
-  vm_net_bus="virtio"
-  vm_net_dev="enp1s0"
-  vm_cidr="24"
-  vm_dns="8.8.8.8"
+  vm_net_type=""
+  vm_net_bus=""
+  vm_net_dev=""
+  vm_cidr=""
+  vm_dns=""
   vm_gateway=""
-  vm_dhcp="false"
+  vm_bridge=""
+  vm_cputype=""
+  vm_hostname=""
   source_file=""
   dest_file=""
-  post_script="$script_dir/scripts/post_install.sh"
-  cache_dir="$os_home/.cache/virt-manager"
+  post_script=""
+  cache_dir=""
+  virt_dir=""
   if [ "$os_name" = "Darwin" ]; then
-    if [ "$os_arch" = "arm64" ]; then
-      vm_cputype="cortex-a57"
-    else
-      vm_cputype="host"
-    fi
-  else
-    vm_cputype="host"
-  fi
-  if [ "$os_name" = "Darwin" ]; then
-    vm_bridge="en0"
-    brew_dir="/opt/homebrew/Cellar"
-    if [ ! -d "$brew_dir" ]; then
-      brew_dir="/usr/local/Cellar"
-    fi
-    virt_dir="$brew_dir/libvirt"
     installed_packages=$( brew list )
     required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo"
   else
     vm_bridge="br0"
-    virt_dir="/var/lib/libvirt"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
     required_packages="virt-manager libosinfo-bin libguestfs-tools"
   fi
-  image_dir="$virt_dir/images"
+  image_dir=""
 }
 
 # Verbose message
@@ -691,10 +680,75 @@ reset_defaults () {
     vm_arch="$os_arch"
   fi
   verbose_message "Setting VM arch to \"$vm_arch\"" "notice"
+  if [ "$vm_cputype" = "" ]; then
+    if [ "$os_name" = "Darwin" ]; then
+      if [ "$os_arch" = "arm64" ]; then
+        vm_cputype="cortex-a57"
+      else
+        vm_cputype="host"
+      fi
+    else
+      vm_cputype="host"
+    fi
+  fi
+  verbose_message "Setting CPU type to \"$vm_cputype\"" "notice"
   if [ "$vm_name" = "" ]; then
     vm_name="$script_name"
   fi
-  verbose_message "Setting VM name to \"$vm_name\"" "notice"
+  if [ "$vm_cpus" = "" ]; then
+    vm_cpus="2"
+  fi
+  verbose_message "Setting VM CPUs to \"$vm_cpus\"" "notice"
+  if [ "$vm_ram" = "" ]; then
+    vm_ram="4096"
+  fi
+  verbose_message "Setting VM name to \"$vm_ram\"" "notice"
+  if [ "$vm_size" = "" ]; then
+    vm_size="20G"
+  fi
+  verbose_message "Setting VM size to \"$vm_size\"" "notice"
+  if [ "$os_vers" = "" ]; then
+    os_vers="24.04"
+  fi
+  verbose_message "Setting OS version to \"$os_vers\"" "notice"
+  if [ "$vm_boot" = "" ]; then
+    vm_boot="uefi"
+  fi
+  verbose_message "Setting VM boot type to \"$vm_boot\"" "notice"
+  if [ "$vm_graphics" = "" ]; then
+    vm_graphics="none"
+  fi
+  verbose_message "Setting VM vm_graphics to \"$vm_graphics\"" "notice"
+  if [ "$vm_hostname" = "" ]; then
+    vm_hostname="$script_name"
+  fi
+  verbose_message "Setting VM hostname to \"$vm_hostname\"" "notice"
+  if [ "$vm_net_type" = "" ]; then
+    vm_net_type="bridge"
+  fi
+  verbose_message "Setting VM network type to \"$vm_net_type\"" "notice"
+  if [ "$os_name" = "Darwin" ]; then
+    vm_bridge="en0"
+  else
+    vm_bridge="br0"
+  fi
+  verbose_message "Setting VM bridge to \"$vm_bridge\"" "notice"
+  if [ "$vm_net_bus" = "" ]; then
+    vm_net_bus="virtio"
+  fi
+  verbose_message "Setting VM network driver/bus to \"$vm_net_bus\"" "notice"
+  if [ "$vm_net_dev" = "" ]; then
+    vm_net_dev="enp1s0"
+  fi
+  verbose_message "Setting VM network device to \"$vm_net_dev\"" "notice"
+  if [ "$vm_cidr" = "" ]; then
+    vm_cidr="24"
+  fi
+  verbose_message "Setting VM CIDR to \"$vm_cidr\"" "notice"
+  if [ "$vm_dns" = "" ]; then
+    vm_dns="8.8.8.8"
+  fi
+  verbose_message "Setting VM DNS server to \"$vm_dns\"" "notice"
   if [ "$image_file" = "" ]; then
     image_file="ubuntu-$os_vers-server-cloudimg-$os_arch.img"
   fi
@@ -702,7 +756,22 @@ reset_defaults () {
   if [ "$image_url" = "" ]; then
     image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
   fi
-  verbose_message "Setting Cloud Image URL to \"$image_file\"" "notice"
+  verbose_message "Setting Cloud Image URL to \"$image_url\"" "notice"
+  if [ "$os_name" = "Darwin" ]; then
+    brew_dir="/opt/homebrew/Cellar"
+    if [ ! -d "$brew_dir" ]; then
+      brew_dir="/usr/local/Cellar"
+    fi
+    verbose_message "Setting brew directory to \"$brew_dir\"" "notice"
+  fi
+  if [ "$virt_dir" = "" ]; then
+    if [ "$os_name" = "Darwin" ]; then
+      virt_dir="$brew_dir/libvirt"
+    else
+      virt_dir="/var/lib/libvirt"
+    fi
+  fi
+  verbose_message "Setting libvirt directory to \"$virt_dir\"" "notice"
   if [ "$image_dir" = "" ]; then
     image_dir="$virt_dir/images"
   fi
@@ -727,6 +796,14 @@ reset_defaults () {
     vm_osvariant="ubuntu$os_vers"
   fi
   verbose_message "Setting VM OS variant to \"$vm_osvariant\"" "notice"
+  if [ "$post_script" = "" ]; then
+    post_script="$script_dir/scripts/post_install.sh"
+  fi
+  verbose_message "Setting post install script to \"$post_script\"" "notice"
+  if [ "$cache_dir" = "" ]; then
+    cache_dir="$os_home/.cache/virt-manager"
+  fi
+  verbose_message "Setting cache directory to \"$cache_dir\"" "notice"
   if [ "$vm_username" = "" ]; then
     if [ "$do_password" = "true" ]; then
       vm_username="root"
@@ -812,6 +889,10 @@ process_actions () {
       # Get image
       do_get_image="true"
       ;; 
+    *host*)
+      # Set VM hostname
+      do_hostname="true"
+      ;;
     *inject*)         # action
       # Inject SSH key
       do_inject_key="true"
@@ -1062,6 +1143,12 @@ while test $# -gt 0; do
       print_usage "$2"
       shift 2
       exit
+      ;;
+    --hostname)           # switch
+      # VM hostname 
+      check_value "$1" "$2"
+      vm_hostname="$2"
+      shift 2
       ;;
     --imagedir)           # switch
       # Image directory
