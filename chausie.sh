@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.7
+# Version:      0.3.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -762,93 +762,93 @@ reset_defaults () {
 process_actions () {
   actions="$1"
   case $actions in
-    action|help) # action
+    action|help)      # action
       # Print actions help
       print_usage "actions"
       exit
       ;;
-    *config) # action
+    *config)          # action
       # Check config
       do_check_config="true"
       ;;
-    connect|console) # action
+    connect|console)  # action
       # Connect to VM
       do_connect="true"
       ;;
-    copy|upload) # action
+    copy|upload)      # action
       # Copy file to VM
       do_upload="true"
       ;;
-    createpool) # action
+    createpool)       # action
       # Create pool
       do_create_pool="true"
       ;;
-    createvm) # action
+    createvm)         # action
       # Create VM
       do_get_image="true"
       do_check_config="true"
       do_create_pool="true"
       do_create_vm="true"
       ;;
-    *network*) # action
+    *network*)        # action
       # Configure network
       do_network="true"
       ;;
-    customize|post*) # action
+    customize|post*)  # action
       # Do postinstall config
       do_post="true"
       ;;
-    deletepool) # action
+    deletepool)       # action
       # Create pool
       do_delete_pool="true"
       ;;
-    deletevm) # action
+    deletevm)         # action
       # Create VM
       do_check_config="true"
       do_delete_pool="true"
       do_delete_vm="true"
       ;;
-    getimage) # action
+    getimage)         # action
       # Get image
       do_get_image="true"
       ;; 
-    *inject*) # action
+    *inject*)         # action
       # Inject SSH key
       do_inject_key="true"
       ;;
-    listvm*) # action
+    listvm*)          # action
       # List VMs
       do_list_vms="true"
       ;;
-    listpool*) # action
+    listpool*)        # action
       # List VMs
       do_list_pools="true"
       ;;
-    listnet*) # action
+    listnet*)         # action
       # List nets
       do_list_nets="true"
       ;;
-    *password*) # action
+    *password*)       # action
       # Set password for user in VM
       do_password="true"
       ;;
-    run*) # action
+    run*)             # action
       # Run command in VM
       do_command="true"
       ;;
-    shellcheck) # action
+    shellcheck)       # action
       # Check script with shellcheck
       do_shellcheck="true"
       ;;
-    shutdown*|stop*) # action
+    shutdown*|stop*)  # action
       # Stop VM
       do_stop_vm="true"
       ;;
-    start*|boot*) # action
+    start*|boot*)     # action
       # Start VM
       do_start_vm="true"
       ;;
-    version) # action
+    version)          # action
       # Print version
       print_version
       exit
@@ -953,265 +953,265 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action)   # switch
+    --action)             # switch
       # Action to perform
       check_value "$1" "$2"
       actions="$2"
       do_actions="true"
       shift 2
       ;;
-    --actions)  # switch
+    --actions)            # switch
       # Print actions
       print_usage "actions"
       shift
       exit
       ;;
-    --arch)     # switch
+    --arch)               # switch
       # Specify architecture
       check_value "$1" "$2"
       vm_arch="$2"
       shift 2
       ;;
-    --boot*) # switch
+    --boot*)              # switch
       # VM boot type (e.g. UEFI)
       check_value "$1" "$2"
       vm_boot="$2"
       shift 2
       ;;
-    --bridge) # switch
+    --bridge)             # switch
       # VM network bridge
       check_value "$1" "$2"
       vm_bridge="$2"
       shift 2
       ;;
-    --checkconfig) # switch
+    --checkconfig)        # switch
       # Check config
       do_check_config="true"
       shift
       ;;
-    --cidr)                     # switch
+    --cidr)               # switch
       # VM CIDR
       check_value "$1" "$2"
       vm_cidr="$2"
       shift 2
       ;;
-    --cpus) # switch
+    --cpus)               # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm_cpus="$2"
       shift 2
       ;;
-    --cputype) # switch
+    --cputype)            # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm_cputype="$2"
       shift 2
       ;;
-    --debug)                    # switch
+    --debug)              # switch
       # Run in debug mode
       do_debug="true"
       shift
       ;;
-    --dest*)                    # switch
+    --dest*)              # switch
       # Destination of file to copy into VM disk
       check_value "$1" "$2"
       dest_file="$2"
       shift 2
       ;;
-    --disk)                     # switch
+    --disk)               # switch
       # VM disk file
       check_value "$1" "$2"
       vm_disk="$2"
       shift 2
       ;;
-    --dns)                     # switch
+    --dns)                # switch
       # VM DNS server
       check_value "$1" "$2"
       vm_dns="$2"
       shift 2
       ;;
-    --dryrun)                   # switch
+    --dryrun)             # switch
       # Run in dryrun mode
       do_dryrun="true"
       shift
       ;;
-    --force)                    # switch
+    --force)              # switch
       # Force mode
       do_force="true"
       shift
       ;;
-    --getimage)                 # switch
+    --getimage)           # switch
       # Get Image
       do_get_image="true"
       shift
       ;;
-    --gateway|--router)                # switch
+    --gateway|--router)   # switch
       # VM gateway address
       check_value "$1" "$2"
       vm_gateway="$2"
       shift 2
       ;;
-    --graphics)                 # switch
+    --graphics)           # switch
       # VM Graphics type
       check_value "$1" "$2"
       vm_graphics="$2"
       shift 2
       ;;
-    --help|--usage|-h)          # switch
+    --help|--usage|-h)    # switch
       # Print help
       print_usage "$2"
       shift 2
       exit
       ;;
-    --imagedir)                 # switch
+    --imagedir)           # switch
       # Image directory
       check_value "$1" "$2"
       image_dir="$2"
       shift 2
       ;;
-    --imagefile)                # switch
+    --imagefile)          # switch
       # Image file
       check_value "$1" "$2"
       image_file="$2"
       shift 2
       ;;
-    --imageurl)                 # switch
+    --imageurl)           # switch
       # Image URL
       check_value "$1" "$2"
       image_url="$2"
       shift 2
       ;;
-    --ip*)                 # switch
+    --ip*)                # switch
       # VM IP address
       check_value "$1" "$2"
       vm_ip="$2"
       shift 2
       ;;
-    --*name)                   # switch
+    --*name)              # switch
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
       shift 2
       ;;
-    --nettype)                  # switch
+    --nettype)            # switch
       # Net type (e.g. bridge)
       check_value "$1" "$2"
       vm_net_type="$2"
       shift 2
       ;;
-    --netbus|netdriver)         # switch
+    --netbus|netdriver)   # switch
       # Net bus/driver (e.g. virtio)
       check_value "$1" "$2"
       vm_net_bus="$2"
       shift 2
       ;;
-    --netdev|--nic)   # switch
+    --netdev|--nic)       # switch
       # VM network device (e.g. enp1s0)
       check_value "$1" "$2"
       vm_net_dev="$2"
       shift 2
       ;;
-    --options) # switch
+    --options)            # switch
       # Options
       check_value "$1" "$2"
       options="$2"
       do_options="true"
       shift 2
       ;;
-    --osvariant) # switch
+    --osvariant)          # switch
       # Os variant
       check_value "$1" "$2"
       vm_osvariant="$2"
       shift 2
       ;;
-    --osvers) # switch
+    --osvers)             # switch
       # OS version of image
       check_value "$1" "$2"
       os_vers="$2"
       shift 2
       ;;
-    --password) # switch
+    --password)           # switch
       # Password
       check_value "$1" "$2"
       vm_password="$2"
       shift 2
       ;;
-    --poolname) # switch
+    --poolname)           # switch
       # Pool name
       check_value "$1" "$2"
       pool_name="$2"
       shift 2
       ;;
-    --pooldir) # switch
+    --pooldir)            # switch
       # Pool directory
       check_value "$1" "$2"
       pool_dir="$2"
       shift 2
       ;;
-    --post*) #switch
+    --post*)              # switch
       # Post install script
       check_value "$1" "$2"
       post_script="$2"
       shift 2
       ;;
-    --ram) # switch
+    --ram)                # switch
       # Amount of VM RAM
       check_value "$1" "$2"
       vm_ram="$2"
       shift 2
       ;;
-    --run*) # swith
+    --run*)               # swith
       # Command to run in VM image
       check_value "$1" "$2"
       vm_command="$2"
       shift 2
       ;;
-    --size) # switch
+    --size)               # switch
       # Size of VM disk
       check_value "$1" "$2"
       vm_size="$2"
       shift 2
       ;;
-    --shellcheck)   # switch
+    --shellcheck)         # switch
       # Run shellcheck on script
       do_shellcheck="true"
       shift
       ;;
-    --source*)      # switch
+    --source*)            # switch
       # Source file to copy into VM disk
       check_value "$1" "$2"
       source_file="$2"
       shift 2
       ;;
-    --sshkey)       # switch
+    --sshkey)             # switch
       # SSH username
       check_value "$1" "$2"
       ssh_key="$2"
       shift 2
       ;;
-    --strict)       # switch
+    --strict)             # switch
       # Run in strict mode
       do_strict="true"
       shift
       ;;
-    --user*)        # switch
+    --user*)              # switch
       # Username
       check_value "$1" "$2"
       vm_username="$2"
       shift 2
       ;;
-    --verbose)      # switch
+    --verbose)            # switch
       # Run in verbose mode
       do_verbose="true"
       shift
       ;;
-    --version|-V)   # switch
+    --version|-V)         # switch
       # Print version
       print_version
       shift
       exit
       ;;
-    --virtdir)      # switch
+    --virtdir)            # switch
       # VM base directory
       check_value "$1" "$2"
       virt_dir="$2"
