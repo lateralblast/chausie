@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.5
+# Version:      0.3.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -186,6 +186,7 @@ set_defaults () {
   do_list_nets="false"
   do_inject_key="false"
   do_password="false"
+  do_network="false"
   vm_cpus="2"
   vm_ram="4096"
   vm_size="20G"
@@ -199,6 +200,11 @@ set_defaults () {
   vm_password=""
   vm_net_type="bridge"
   vm_net_bus="virtio"
+  vm_net_dev="enp1s0"
+  vm_cidr="24"
+  vm_dns="8.8.8.8"
+  vm_gateway=""
+  vm_dhcp="false"
   source_file=""
   dest_file=""
   post_script="$script_dir/scripts/post_install.sh"
@@ -346,7 +352,7 @@ delete_libvirt_dir () {
   if [ -d "$new_dir" ] && [ "$new_dir" != "/" ]; then
     execute_command "rm -rf $new_dir" "linuxsu"
   else
-    verbose_message "Directory \"$new_dir\" doesn't exist" "notice"
+    verbose_message "Directory \"$new_dir\" does not exist" "notice"
   fi
 }
 
@@ -486,7 +492,7 @@ delete_vm () {
   if [[ "$vm_check" = "1" ]]; then
     execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
   else
-    verbose_message "VM \"$vm_name\" doesn't exists" "notice"
+    verbose_message "VM \"$vm_name\" does not exist" "notice"
   fi
 }
 
@@ -534,7 +540,7 @@ inject_key () {
   if [[ "$vm_check" = "1" ]]; then
     stop_vm "$vm_name"
     if [ -f "$ssh_key" ]; then
-      if [ -f "$vm_disk" ]; then
+      if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
         execute_command "virt-customize -a $vm_disk --ssh-inject $vm_username:file:$ssh_key" "linuxsu"
       else
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
@@ -551,9 +557,10 @@ inject_key () {
 
 upload_file () {
   vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]]; then
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$source_file" ]; then
-      if [ -f "$vm_disk" ]; then
+      execute_command "chmod +x $source_file" ""
+      if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
         execute_command "virt-customize -a $vm_disk --upload $source_file:$dest_file" "linuxsu"
       else
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
@@ -570,7 +577,7 @@ upload_file () {
 
 run_command () {
   vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]]; then
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ]; then
       execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
     else
@@ -585,8 +592,8 @@ run_command () {
 
 set_password () {
   vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]]; then
-    if [ -f "$vm_disk" ]; then
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+    if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
       if [ "$vm_username" = "root" ]; then
         execute_command "virt-customize -a $vm_disk --root-password password:$vm_password" "linuxsu"
       fi
@@ -603,9 +610,9 @@ set_password () {
 customize_vm () {
   vm_name="$1"
   vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]]; then
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     stop_vm "$vm_name"
-    if [ -f "$post_script" ]; then
+    if [ -f "$post_script" ] || [ "$do_dryrun" = "true" ]; then
       execute_command "virt-customize " "linuxsu"
     else
       verbose_message "Post install script \"$post_script\" does not exist" "warn"
@@ -613,6 +620,42 @@ customize_vm () {
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
   fi
+}
+
+# Print contents of file
+
+print_contents () {
+  file_name="$1" 
+  if [ -f "$file_name" ]; then
+    if [ "$do_verbose" = "true" ]; then
+      verbose_message "Contents of file \"$file_name\"" "info"
+      cat "$file_name"
+    fi
+  fi
+}
+
+# Configure network
+
+configure_network () {
+  temp_file="/tmp/01-netcfg.yaml"
+  echo "network"                                 > "$temp_file"
+  echo "  ethernets:"                           >> "$temp_file"
+  echo "    $vm_net_dev:"                       >> "$temp_file"
+  echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
+  if [ "$vm_dhcp" = "false" ]; then
+    echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
+    echo "      nameservers: [$vm_dns]"         >> "$temp_file"
+    echo "    routes:"                          >> "$temp_file"
+    echo "      - to: default"                  >> "$temp_file"
+    echo "        via: $vm_gateway"             >> "$temp_file"
+  fi
+  echo "  version: 2"                           >> "$temp_file"
+  source_file="$temp_file"
+  touch "$source_file"
+  chmod 700 "$source_file"
+  print_contents "$source_file" 
+  dest_file="/etc/netplan/01-netcfg.yaml"
+  upload_file
 }
 
 # List VMs
@@ -700,6 +743,17 @@ reset_defaults () {
     ssh_key="$os_home/.ssh/id_rsa.pub"
   fi
   verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
+  if [ "$vm_ip" = "dhcp" ]; then
+    verbose_message "Setting network to DHCP" "notice"
+  else
+    if [ ! "$vm_ip" = "" ]; then
+      verbose_message "Setting network to static"     "notice"
+      verbose_message "Seting IP to $vm_ip"           "notice"
+      verbose_message "Seting CIDR to $vm_cidr"       "notice"
+      verbose_message "Seting gateway to $vm_gateway" "notice"
+      verbose_message "Seting DNS server to $vm_dns"  "notice"
+    fi
+  fi
   create_libvirt_dir "$release_dir"
 }
 
@@ -735,6 +789,10 @@ process_actions () {
       do_check_config="true"
       do_create_pool="true"
       do_create_vm="true"
+      ;;
+    *network*) # action
+      # Configure network
+      do_network="true"
       ;;
     customize|post*) # action
       # Do postinstall config
@@ -807,56 +865,60 @@ process_actions () {
 process_options () {
   options="$1"
   case $options in
-    debug) # option
+    debug)          # option
       # Enable debug mode
       do_debug="true"
       ;;
-    dryrun) # option
+    dryrun)         # option
       # Enable dryrun mode
       do_dryrun="true"
       ;;
-    noautoconsole) # option
+    dhcp)           # option
+      # Use DHCP
+      vm_dhcp="true"
+      ;;
+    noautoconsole)  # option
       # Disable autoconsole
       do_autoconsole="false"
       ;;
-    autoconsole) # option
+    autoconsole)    # option
       # Enable autoconsole
       do_autoconsole="true"
       ;;
-    noautostart) # option
+    noautostart)    # option
       # Disable autoconsole
       do_autostart="false"
       ;;
-    autostart) # option
+    autostart)      # option
       # Enable autoconsole
       do_autostart="true"
       ;;
-    nobacking) # option
+    nobacking)      # option
       # Enable strict mode
       do_backing="false"
       ;;
-    options|help) # option
+    options|help)   # option
       # Print options help
       print_usage "options"
       exit
       ;;
-    noreboot) # option
+    noreboot)       # option
       # Disable reboot
       do_reboot="false"
       ;;
-    reboot) # option
+    reboot)         # option
       # Disable reboot
       do_reboot="true"
       ;;
-    strict) # option
+    strict)         # option
       # Enable strict mode
       do_strict="true"
       ;;
-    verbose) # option
+    verbose)        # option
       # Enable verbose mode
       do_verbose="true"
       ;;
-    version) # option
+    version)        # option
       # Print version
       print_version
       exit
@@ -891,26 +953,26 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action) # switch
+    --action)   # switch
       # Action to perform
       check_value "$1" "$2"
       actions="$2"
       do_actions="true"
       shift 2
       ;;
-    --actions) # switch
+    --actions)  # switch
       # Print actions
       print_usage "actions"
       shift
       exit
       ;;
-    --arch) # switch
+    --arch)     # switch
       # Specify architecture
       check_value "$1" "$2"
       vm_arch="$2"
       shift 2
       ;;
-    --boot|--boottype) # switch
+    --boot*) # switch
       # VM boot type (e.g. UEFI)
       check_value "$1" "$2"
       vm_boot="$2"
@@ -927,6 +989,12 @@ while test $# -gt 0; do
       do_check_config="true"
       shift
       ;;
+    --cidr)                     # switch
+      # VM CIDR
+      check_value "$1" "$2"
+      vm_cidr="$2"
+      shift 2
+      ;;
     --cpus) # switch
       # Number of VM CPUs
       check_value "$1" "$2"
@@ -939,84 +1007,108 @@ while test $# -gt 0; do
       vm_cputype="$2"
       shift 2
       ;;
-    --debug) # switch
+    --debug)                    # switch
       # Run in debug mode
       do_debug="true"
       shift
       ;;
-    --dest|--destination|--destfile|--destinationfile) # switch
+    --dest*)                    # switch
       # Destination of file to copy into VM disk
       check_value "$1" "$2"
       dest_file="$2"
       shift 2
       ;;
-    --disk) # switch
+    --disk)                     # switch
       # VM disk file
       check_value "$1" "$2"
       vm_disk="$2"
       shift 2
       ;;
-    --dryrun) # switch
+    --dns)                     # switch
+      # VM DNS server
+      check_value "$1" "$2"
+      vm_dns="$2"
+      shift 2
+      ;;
+    --dryrun)                   # switch
       # Run in dryrun mode
       do_dryrun="true"
       shift
       ;;
-    --force) # switch
+    --force)                    # switch
       # Force mode
       do_force="true"
       shift
       ;;
-    --getimage) # switch
+    --getimage)                 # switch
       # Get Image
       do_get_image="true"
       shift
       ;;
-    --graphics) # switch
+    --gateway|--router)                # switch
+      # VM gateway address
+      check_value "$1" "$2"
+      vm_gateway="$2"
+      shift 2
+      ;;
+    --graphics)                 # switch
       # VM Graphics type
       check_value "$1" "$2"
       vm_graphics="$2"
       shift 2
       ;;
-    --help|--usage|-h) # switch
+    --help|--usage|-h)          # switch
       # Print help
       print_usage "$2"
       shift 2
       exit
       ;;
-    --imagedir) # switch
+    --imagedir)                 # switch
       # Image directory
       check_value "$1" "$2"
       image_dir="$2"
       shift 2
       ;;
-    --imagefile) # switch
+    --imagefile)                # switch
       # Image file
       check_value "$1" "$2"
       image_file="$2"
       shift 2
       ;;
-    --imageurl) # switch
+    --imageurl)                 # switch
       # Image URL
       check_value "$1" "$2"
       image_url="$2"
       shift 2
       ;;
-    --hostname|--vmname|--name) # switch
+    --ip*)                 # switch
+      # VM IP address
+      check_value "$1" "$2"
+      vm_ip="$2"
+      shift 2
+      ;;
+    --*name)                   # switch
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
       shift 2
       ;;
-    --nettype) # switch
+    --nettype)                  # switch
       # Net type (e.g. bridge)
       check_value "$1" "$2"
       vm_net_type="$2"
       shift 2
       ;;
-    --netbus|netdriver) # switch
+    --netbus|netdriver)         # switch
       # Net bus/driver (e.g. virtio)
       check_value "$1" "$2"
       vm_net_bus="$2"
+      shift 2
+      ;;
+    --netdev|--nic)   # switch
+      # VM network device (e.g. enp1s0)
+      check_value "$1" "$2"
+      vm_net_dev="$2"
       shift 2
       ;;
     --options) # switch
@@ -1056,7 +1148,7 @@ while test $# -gt 0; do
       pool_dir="$2"
       shift 2
       ;;
-    --postscript) #switch
+    --post*) #switch
       # Post install script
       check_value "$1" "$2"
       post_script="$2"
@@ -1068,7 +1160,7 @@ while test $# -gt 0; do
       vm_ram="$2"
       shift 2
       ;;
-    --run|runcommand) # swith
+    --run*) # swith
       # Command to run in VM image
       check_value "$1" "$2"
       vm_command="$2"
@@ -1080,46 +1172,46 @@ while test $# -gt 0; do
       vm_size="$2"
       shift 2
       ;;
-    --shellcheck) #switch
+    --shellcheck)   # switch
       # Run shellcheck on script
       do_shellcheck="true"
       shift
       ;;
-    --source|--sourcefile) # switch
+    --source*)      # switch
       # Source file to copy into VM disk
       check_value "$1" "$2"
       source_file="$2"
       shift 2
       ;;
-    --sshkey) # switch
+    --sshkey)       # switch
       # SSH username
       check_value "$1" "$2"
       ssh_key="$2"
       shift 2
       ;;
-    --strict) # switch
+    --strict)       # switch
       # Run in strict mode
       do_strict="true"
       shift
       ;;
-    --user|--username) # switch
+    --user*)        # switch
       # Username
       check_value "$1" "$2"
       vm_username="$2"
       shift 2
       ;;
-    --verbose) # switch
+    --verbose)      # switch
       # Run in verbose mode
       do_verbose="true"
       shift
       ;;
-    --version|-V) # switch
+    --version|-V)   # switch
       # Print version
       print_version
       shift
       exit
       ;;
-    --virtdir) # switch
+    --virtdir)      # switch
       # VM base directory
       check_value "$1" "$2"
       virt_dir="$2"
@@ -1206,4 +1298,7 @@ if [ "$do_command" = "true" ]; then
 fi
 if [ "$do_password" = "true" ]; then
   set_password
+fi
+if [ "$do_network" = "true" ]; then
+  configure_network
 fi

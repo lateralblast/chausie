@@ -70,3 +70,7 @@
 # Bug fixes
 # 0.3.5: Fri 30 Aug 2024 15:26:08 AEST
 # Improvements
+# 0.3.6: Sat 31 Aug 2024 12:32:33 AEST
+# Added code to create netplan file
+# 0.3.7: Sat 31 Aug 2024 21:20:16 AEST
+# Added code to print contents of file
