@@ -80,3 +80,7 @@
 # More formatting fixes
 # 0.4.0: Sun  1 Sep 2024 16:17:46 AEST
 # Added VM check to network configuration
+# 0.4.1: Sun  1 Sep 2024 17:38:15 AEST
+# Added code to set hostname
+# 0.4.2: Sun  1 Sep 2024 18:31:50 AEST
+# Added code to install packages

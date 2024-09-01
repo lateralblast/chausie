@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.0
+# Version:      0.4.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -188,6 +188,7 @@ set_defaults () {
   do_password="false"
   do_network="false"
   do_hostname="false"
+  do_install="false"
   vm_dhcp="false"
   vm_cpus=""
   vm_ram=""
@@ -205,10 +206,13 @@ set_defaults () {
   vm_net_dev=""
   vm_cidr=""
   vm_dns=""
+  vm_ip=""
   vm_gateway=""
   vm_bridge=""
   vm_cputype=""
   vm_hostname=""
+  vm_domain=""
+  vm_fqdn=""
   source_file=""
   dest_file=""
   post_script=""
@@ -567,7 +571,8 @@ upload_file () {
 run_command () {
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
-    if [ -f "$vm_disk" ]; then
+    if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
+      stop_vm "$vm_name"
       execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
     else
       verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
@@ -580,18 +585,8 @@ run_command () {
 # Set password
 
 set_password () {
-  vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
-    if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
-      if [ "$vm_username" = "root" ]; then
-        execute_command "virt-customize -a $vm_disk --root-password password:$vm_password" "linuxsu"
-      fi
-    else
-      verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
-    fi
-  else
-    verbose_message "VM \"$vm_name\" does not exist" "warn"
-  fi
+  vm_command="virt-customize -a $vm_disk --root-password password:$vm_password" 
+  run_command "$vm_command"
 }
 
 # Customize VM
@@ -648,6 +643,33 @@ configure_network () {
     print_contents "$source_file" 
     dest_file="/etc/netplan/01-netcfg.yaml"
     upload_file
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
+  fi
+}
+
+# Set VM hostname
+
+set_hostname () {
+  if [ "$vm_fqdn" = "" ]; then
+    if [ "$vm_domain" = "" ]; then
+      vm_fqdn="$vm_hostname"
+    else
+      vm_fqdn="$vm_hostname.$vm_domain"
+    fi
+  fi
+  vm_command="hostnamectl set-hostname $vm_fqdn"
+  run_command "$vm_command"
+}
+
+install_packages () {
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+    if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
+      execute_command "virt-customize -a $vm_disk --install '$vm_packages'" "linuxsu"
+    else
+      verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
+    fi
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
   fi
@@ -903,12 +925,16 @@ process_actions () {
       # Inject SSH key
       do_inject_key="true"
       ;;
+    install*)         # action
+      # Install packages in VM
+      do_install="true"
+      ;;
     listvm*)          # action
       # List VMs
       do_list_vms="true"
       ;;
     listpool*)        # action
-      # List VMs
+      # List pools
       do_list_pools="true"
       ;;
     listnet*)         # action
@@ -1117,6 +1143,12 @@ while test $# -gt 0; do
       vm_dns="$2"
       shift 2
       ;;
+    --domain@)            # switch
+      # VM domainname
+      check_value "$1" "$2"
+      vm_domain="$2"
+      shift 2
+      ;;
     --dryrun)             # switch
       # Run in dryrun mode
       do_dryrun="true"
@@ -1126,6 +1158,12 @@ while test $# -gt 0; do
       # Force mode
       do_force="true"
       shift
+      ;;
+    --fqdn)               # switch
+      # VM FQDN
+      check_value "$1" "$2"
+      vm_fqdn="$2"
+      shift 2
       ;;
     --getimage)           # switch
       # Get Image
@@ -1180,7 +1218,7 @@ while test $# -gt 0; do
       vm_ip="$2"
       shift 2
       ;;
-    --*name)              # switch
+    --name|--vmname)      # switch
       # Name of VM
       check_value "$1" "$2"
       vm_name="$2"
@@ -1223,8 +1261,14 @@ while test $# -gt 0; do
       os_vers="$2"
       shift 2
       ;;
+    --packages)           # switch
+      # Packages to install in VM
+      check_value "$1" "$2"
+      vm_packages="$2"
+      shift 2
+      ;;
     --password)           # switch
-      # Password
+      # Password for user (e.g. root)
       check_value "$1" "$2"
       vm_password="$2"
       shift 2
@@ -1397,4 +1441,7 @@ if [ "$do_network" = "true" ]; then
 fi
 if [ "$do_hostname" = "true" ]; then
   set_hostname
+fi
+if [ "$do_install" = "true" ]; then
+  install_packages
 fi
