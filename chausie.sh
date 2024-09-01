@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.3.9
+# Version:      0.4.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -626,25 +626,31 @@ print_contents () {
 # Configure network
 
 configure_network () {
-  temp_file="/tmp/01-netcfg.yaml"
-  echo "network"                                 > "$temp_file"
-  echo "  ethernets:"                           >> "$temp_file"
-  echo "    $vm_net_dev:"                       >> "$temp_file"
-  echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
-  if [ "$vm_dhcp" = "false" ]; then
-    echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
-    echo "      nameservers: [$vm_dns]"         >> "$temp_file"
-    echo "    routes:"                          >> "$temp_file"
-    echo "      - to: default"                  >> "$temp_file"
-    echo "        via: $vm_gateway"             >> "$temp_file"
+  vm_check=$(virsh list --all |grep -c $vm_name )
+  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+    stop_vm "$vm_name"
+    temp_file="/tmp/01-netcfg.yaml"
+    echo "network"                                 > "$temp_file"
+    echo "  ethernets:"                           >> "$temp_file"
+    echo "    $vm_net_dev:"                       >> "$temp_file"
+    echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
+    if [ "$vm_dhcp" = "false" ]; then
+      echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
+      echo "      nameservers: [$vm_dns]"         >> "$temp_file"
+      echo "    routes:"                          >> "$temp_file"
+      echo "      - to: default"                  >> "$temp_file"
+      echo "        via: $vm_gateway"             >> "$temp_file"
+    fi
+    echo "  version: 2"                           >> "$temp_file"
+    source_file="$temp_file"
+    touch "$source_file"
+    chmod 700 "$source_file"
+    print_contents "$source_file" 
+    dest_file="/etc/netplan/01-netcfg.yaml"
+    upload_file
+  else
+    verbose_message "VM \"$vm_name\" does not exist" "warn"
   fi
-  echo "  version: 2"                           >> "$temp_file"
-  source_file="$temp_file"
-  touch "$source_file"
-  chmod 700 "$source_file"
-  print_contents "$source_file" 
-  dest_file="/etc/netplan/01-netcfg.yaml"
-  upload_file
 }
 
 # List VMs
@@ -1388,4 +1394,7 @@ if [ "$do_password" = "true" ]; then
 fi
 if [ "$do_network" = "true" ]; then
   configure_network
+fi
+if [ "$do_hostname" = "true" ]; then
+  set_hostname
 fi
