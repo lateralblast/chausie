@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.2
+# Version:      0.4.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -189,6 +189,9 @@ set_defaults () {
   do_network="false"
   do_hostname="false"
   do_install="false"
+  do_useradd="false"
+  do_groupadd="false"
+  do_sudoers="false"
   vm_dhcp="false"
   vm_cpus=""
   vm_ram=""
@@ -200,6 +203,9 @@ set_defaults () {
   vm_osvariant=""
   vm_command=""
   vm_username=""
+  vm_userid=""
+  vm_groupname=""
+  vm_groupid=""
   vm_password=""
   vm_net_type=""
   vm_net_bus=""
@@ -213,6 +219,12 @@ set_defaults () {
   vm_hostname=""
   vm_domain=""
   vm_fqdn=""
+  vm_gecos=""
+  vm_home_dir=""
+  vm_sudoers=""
+  vm_file_perms=""
+  vm_file_owner=""
+  vm_file_group=""
   source_file=""
   dest_file=""
   post_script=""
@@ -552,9 +564,20 @@ upload_file () {
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$source_file" ]; then
-      execute_command "chmod +x $source_file" ""
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
         execute_command "virt-customize -a $vm_disk --upload $source_file:$dest_file" "linuxsu"
+        if [ ! "$vm_file_owner" = "" ]; then
+          if [ ! "$vm_file_group" = "" ]; then
+            vm_command="chown $vm_file_owner $dest_file" 
+          else
+            vm_command="chown $vm_file_owner:$vm_file_group $dest_file" 
+          fi
+          run_command
+        fi
+        if [ ! "$vm_file_perms" = "" ]; then
+          vm_command="chmod $vm_file_perms $dest_file" 
+          run_command
+        fi
       else
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
       fi
@@ -642,6 +665,8 @@ configure_network () {
     chmod 700 "$source_file"
     print_contents "$source_file" 
     dest_file="/etc/netplan/01-netcfg.yaml"
+    vm_file_perms="600"
+    vm_file_owner="root"
     upload_file
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -673,6 +698,40 @@ install_packages () {
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
   fi
+}
+
+add_group () {
+  if [ "$group_id" = "" ]; then
+    vm_command="groupadd $vm_groupname"
+  else
+    vm_command="groupadd -g $vm_groupid $vm_groupname"
+  fi
+  run_command "$vm_command"
+}
+
+add_user () {
+  add_group
+  if [ "$user_id" = "" ]; then
+    vm_command="useradd -G $vm_groupname -m -d $vm_home_dir $vm_username"
+  else
+    vm_command="useradd -u $vm_userid -G $vm_groupname -m -d $vm_home_dir $vm_username"
+  fi
+  run_command "$vm_command"
+}
+
+add_sudoers () {
+  if [ "$source_file" = "" ]; then
+    source_file="/tmp/sudoers.$vm_username"
+    echo "$vm_username $vm_sudoers" > "$source_file"
+  fi
+  if [ "$dest_file" = "" ]; then
+    dest_file="/etc/sudoers.d/$vm_username"
+  fi
+  vm_file_owner="root"
+  vm_file_group="root"
+  vm_file_perms="600"
+  print_contents "$source_file"
+  upload_file
 }
 
 # List VMs
@@ -844,6 +903,26 @@ reset_defaults () {
     vm_password="ubuntu"
   fi
   verbose_message "Setting password to \"$vm_password\"" "notice"
+  if [ "$vm_userid" = "" ]; then
+    vm_userid="1000"
+  fi
+  verbose_message "Setting user ID to \"$vm_userid\"" "notice"
+  if [ "$vm_groupname" = "" ]; then
+    vm_groupname="ubuntu"
+  fi
+  verbose_message "Setting group to \"$vm_groupname\"" "notice"
+  if [ "$vm_groupid" = "" ]; then
+    vm_groupid="1000"
+  fi
+  verbose_message "Setting group ID to \"$vm_groupid\"" "notice"
+  if [ "$vm_home_dir" = "" ]; then
+    vm_home_dir="/home/$vm_username"
+  fi
+  verbose_message "Setting home directory to \"$vm_home_dir\"" "notice"
+  if [ "$vm_sudoers" = "" ]; then
+    vm_sudoers="ALL=(ALL) NOPASSWD:ALL"
+  fi
+  verbose_message "Setting sudoers entry to \"$vm_sudoers\"" "notice"
   if [ "$ssh_key" = "" ]; then
     ssh_key="$os_home/.ssh/id_rsa.pub"
   fi
@@ -917,6 +996,10 @@ process_actions () {
       # Get image
       do_get_image="true"
       ;; 
+    *group*)          # action
+      # Add group to VM
+      do_groupadd="true" 
+      ;;
     *host*)
       # Set VM hostname
       do_hostname="true"
@@ -960,6 +1043,14 @@ process_actions () {
     start*|boot*)     # action
       # Start VM
       do_start_vm="true"
+      ;;
+    sudo*)            # action
+      # Add sudoers entry
+      do_sudoers="true"
+      ;;
+    *user*)           # action
+      # Add user to VM
+      do_useradd="true"
       ;;
     version)          # action
       # Print version
@@ -1154,6 +1245,24 @@ while test $# -gt 0; do
       do_dryrun="true"
       shift
       ;;
+    --filegroup)          # switch
+      # VM file group 
+      check_value "$1" "$2"
+      vm_file_group="$2"
+      shift 2
+      ;;
+    --fileowner)          # switch
+      # VM file owner 
+      check_value "$1" "$2"
+      vm_file_owner="$2"
+      shift 2
+      ;;
+    --fileperms)          # switch
+      # VM file permissions
+      check_value "$1" "$2"
+      vm_file_perms="$2"
+      shift 2
+      ;;
     --force)              # switch
       # Force mode
       do_force="true"
@@ -1182,11 +1291,35 @@ while test $# -gt 0; do
       vm_graphics="$2"
       shift 2
       ;;
+    --gecos)              # switch
+      # GECOS field for user
+      check_value "$1" "$2"
+      vm_gecos="$2"
+      shift 2
+      ;;
+    --groupid|--gid)      # switch
+      # Group ID
+      check_value "$1" "$2"
+      vm_groupid="$2"
+      shift 2
+      ;;
+    --group|--groupname)  # switch
+      # Group 
+      check_value "$1" "$2"
+      vm_groupname="$2"
+      shift 2
+      ;;
     --help|--usage|-h)    # switch
       # Print help
       print_usage "$2"
       shift 2
       exit
+      ;;
+    --home*)              # switch
+      # Home directory 
+      check_value "$1" "$2"
+      vm_home_dir="$2"
+      shift 2
       ;;
     --hostname)           # switch
       # VM hostname 
@@ -1314,7 +1447,7 @@ while test $# -gt 0; do
       do_shellcheck="true"
       shift
       ;;
-    --source*)            # switch
+    --source*|--input*)   # switch
       # Source file to copy into VM disk
       check_value "$1" "$2"
       source_file="$2"
@@ -1331,7 +1464,19 @@ while test $# -gt 0; do
       do_strict="true"
       shift
       ;;
-    --user*)              # switch
+    --sudoers)            # switch
+      # Sudoers entry
+      check_value "$1" "$2"
+      vm_sudoers="$2"
+      shift 2
+      ;;
+    --userid|--uid)       # switch
+      # User ID
+      check_value "$1" "$2"
+      vm_userid="$2"
+      shift 2
+      ;;
+    --user|--username)    # switch
       # Username
       check_value "$1" "$2"
       vm_username="$2"
@@ -1444,4 +1589,13 @@ if [ "$do_hostname" = "true" ]; then
 fi
 if [ "$do_install" = "true" ]; then
   install_packages
+fi
+if [ "$do_useradd" = "true" ]; then
+  add_user
+fi
+if [ "$do_groupadd" = "true" ]; then
+  add_group
+fi
+if [ "$do_sudoers" = "true" ]; then
+  add_sudoers
 fi

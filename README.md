@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.4.2
+Current version 0.4.4
 
 Prerequisites
 -------------
@@ -22,7 +22,16 @@ Required packages:
 Introduction
 ------------
 
-This script is designed to automate/simplify the creation of KVM VMs from cloud images
+This script is designed to automate/simplify the creation of KVM VMs from cloud images.
+
+I wrote this script as I was tired of Canonical's inconsistent cloud-init support.
+
+I understand having some differences between physical and virtual machines, e.g.
+ISO based installs versus using Cloud Images, but when my instructions/workflow for 20.04
+and 22.04 stopped working with 24.04, I thought I'd write a script to use virt-customize
+to bootstrap the image (e.g. configure network, and SSH keys), install ansible,
+then use my existible ansible workflow to finish configuring the VM rather than
+using cloud-init.
 
 Usage
 -----
