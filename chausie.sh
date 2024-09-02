@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.4
+# Version:      0.4.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -37,7 +37,7 @@ export LIBGUESTFS_BACKEND=direct
 # Print help
 
 print_help () {
-  script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
+  script_help=$( grep -A1 "# switch" "$script_file" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" | sed "/^\s*$/d" )
   echo "Usage: $script_bin [OPTIONS...]"
   echo "-----"
   echo "$script_help"
@@ -54,7 +54,7 @@ fi
 # Print actions
 
 print_actions () {
-  script_actions=$( grep -A1 "# action" "$script_file" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
+  script_actions=$( grep -A1 "# action" "$script_file" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" |sed "/^\s*$/d" )
   echo "Actions:"
   echo "-------"
   echo "$script_actions"
@@ -64,7 +64,7 @@ print_actions () {
 # Print options
 
 print_options () {
-  script_options=$( grep -A1 "# option" "$script_file" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/-/g" )
+  script_options=$( grep -A1 "# option" "$script_file" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" |sed "/^\s*$/d" )
   echo "Options:"
   echo "-------"
   echo "$script_options"
@@ -141,6 +141,21 @@ check_shellcheck () {
   bin_test=$( command -v shellcheck | grep -c shellcheck )
   if [ ! "$bin_test" = "0" ]; then
     shellcheck "$script_file"
+  fi
+}
+
+# Check VM name
+
+check_vm_name () {
+  if [ "$vm_name" = "" ]; then
+    verbose_message "VM name is not set" "warn"
+    do_exit
+  fi
+  if [ "$vm_name" = "$script_name" ]; then
+    verbose_message "VM name is set to default" "warn"
+    if [ "$do_force" = "false" ]; then
+      do_exit
+    fi
   fi
 }
 
@@ -378,8 +393,6 @@ get_image () {
 # Create Pool
 
 create_pool () {
-  pool_name="$1"
-  pool_dir="$2"
   create_libvirt_dir "$pool_dir"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ "$pool_name" ]]; then
@@ -394,7 +407,6 @@ create_pool () {
 # Delete Pool
 
 delete_pool () {
-  pool_name="$1"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
   if [[ "$pool_test" =~ "$pool_name" ]]; then
     execute_command "virsh pool-destroy --pool $pool_name > /dev/null 2>&1" ""
@@ -450,6 +462,7 @@ create_disk () {
 # Create VM
 
 create_vm () {
+  check_vm_name
   check_bridge
   check_image_exists
   check_disk_exists
@@ -493,6 +506,7 @@ create_vm () {
 # Delete VM
 
 delete_vm () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
     execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
@@ -504,7 +518,7 @@ delete_vm () {
 # Start VM
 
 start_vm () {
-  vm_name="$1"
+  check_vm_name
   command="virsh start $vm_name"
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
@@ -517,7 +531,7 @@ start_vm () {
 # Stop VM
 
 stop_vm () {
-  vm_name="$1"
+  check_vm_name
   command="virsh shutdown $vm_name"
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
@@ -530,7 +544,7 @@ stop_vm () {
 # Connect to VM
 
 connect_to_vm () {
-  vm_name="$1"
+  check_vm_name
   command="virsh console $vm_name"
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
@@ -541,6 +555,7 @@ connect_to_vm () {
 }
 
 inject_key () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
     stop_vm "$vm_name"
@@ -561,6 +576,7 @@ inject_key () {
 # Upload file
 
 upload_file () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$source_file" ]; then
@@ -592,10 +608,11 @@ upload_file () {
 # Run command
 
 run_command () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
-      stop_vm "$vm_name"
+      stop_vm
       execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
     else
       verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
@@ -615,10 +632,10 @@ set_password () {
 # Customize VM
 
 customize_vm () {
-  vm_name="$1"
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
-    stop_vm "$vm_name"
+    stop_vm
     if [ -f "$post_script" ] || [ "$do_dryrun" = "true" ]; then
       execute_command "virt-customize " "linuxsu"
     else
@@ -644,9 +661,10 @@ print_contents () {
 # Configure network
 
 configure_network () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
-    stop_vm "$vm_name"
+    stop_vm
     temp_file="/tmp/01-netcfg.yaml"
     echo "network"                                 > "$temp_file"
     echo "  ethernets:"                           >> "$temp_file"
@@ -688,6 +706,7 @@ set_hostname () {
 }
 
 install_packages () {
+  check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
@@ -782,6 +801,7 @@ reset_defaults () {
   if [ "$vm_name" = "" ]; then
     vm_name="$script_name"
   fi
+  verbose_message "Setting VM name to \"$vm_name\"" "notice"
   if [ "$vm_cpus" = "" ]; then
     vm_cpus="2"
   fi
@@ -789,7 +809,7 @@ reset_defaults () {
   if [ "$vm_ram" = "" ]; then
     vm_ram="4096"
   fi
-  verbose_message "Setting VM name to \"$vm_ram\"" "notice"
+  verbose_message "Setting VM RAM to \"$vm_ram\"" "notice"
   if [ "$vm_size" = "" ]; then
     vm_size="20G"
   fi
@@ -956,11 +976,11 @@ process_actions () {
       do_check_config="true"
       ;;
     connect|console)  # action
-      # Connect to VM
+      # Connect to VM console
       do_connect="true"
       ;;
     copy|upload)      # action
-      # Copy file to VM
+      # Copy file into VM image
       do_upload="true"
       ;;
     createpool)       # action
@@ -983,11 +1003,11 @@ process_actions () {
       do_post="true"
       ;;
     deletepool)       # action
-      # Create pool
+      # Delete pool
       do_delete_pool="true"
       ;;
     deletevm)         # action
-      # Create VM
+      # Delete VM
       do_check_config="true"
       do_delete_pool="true"
       do_delete_vm="true"
@@ -997,19 +1017,19 @@ process_actions () {
       do_get_image="true"
       ;; 
     *group*)          # action
-      # Add group to VM
+      # Add group to to VM image
       do_groupadd="true" 
       ;;
     *host*)
-      # Set VM hostname
+      # Set hostname in a VM image
       do_hostname="true"
       ;;
     *inject*)         # action
-      # Inject SSH key
+      # Inject SSH key into VM image
       do_inject_key="true"
       ;;
     install*)         # action
-      # Install packages in VM
+      # Install packages in VM image
       do_install="true"
       ;;
     listvm*)          # action
@@ -1025,11 +1045,11 @@ process_actions () {
       do_list_nets="true"
       ;;
     *password*)       # action
-      # Set password for user in VM
+      # Set password for user in VM image
       do_password="true"
       ;;
     run*)             # action
-      # Run command in VM
+      # Run command in VM image
       do_command="true"
       ;;
     shellcheck)       # action
@@ -1045,7 +1065,7 @@ process_actions () {
       do_start_vm="true"
       ;;
     sudo*)            # action
-      # Add sudoers entry
+      # Add sudoers entry to VM image
       do_sudoers="true"
       ;;
     *user*)           # action
@@ -1081,6 +1101,10 @@ process_options () {
       # Use DHCP
       vm_dhcp="true"
       ;;
+    force)          # option
+      # Force action
+      do_force="true"
+      ;;
     noautoconsole)  # option
       # Disable autoconsole
       do_autoconsole="false"
@@ -1090,15 +1114,15 @@ process_options () {
       do_autoconsole="true"
       ;;
     noautostart)    # option
-      # Disable autoconsole
+      # Disable autostart
       do_autostart="false"
       ;;
     autostart)      # option
-      # Enable autoconsole
+      # Enable autostart
       do_autostart="true"
       ;;
     nobacking)      # option
-      # Enable strict mode
+      # Don't use backing (creates a full copy of image)
       do_backing="false"
       ;;
     options|help)   # option
@@ -1111,7 +1135,7 @@ process_options () {
       do_reboot="false"
       ;;
     reboot)         # option
-      # Disable reboot
+      # Enable reboot
       do_reboot="true"
       ;;
     strict)         # option
@@ -1206,7 +1230,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --cputype)            # switch
-      # Number of VM CPUs
+      # Type of CPU within VM
       check_value "$1" "$2"
       vm_cputype="$2"
       shift 2
@@ -1234,7 +1258,7 @@ while test $# -gt 0; do
       vm_dns="$2"
       shift 2
       ;;
-    --domain@)            # switch
+    --domain*)            # switch
       # VM domainname
       check_value "$1" "$2"
       vm_domain="$2"
@@ -1246,19 +1270,19 @@ while test $# -gt 0; do
       shift
       ;;
     --filegroup)          # switch
-      # VM file group 
+      # Set group of a file within VM image
       check_value "$1" "$2"
       vm_file_group="$2"
       shift 2
       ;;
     --fileowner)          # switch
-      # VM file owner 
+      # Set owner of a file within VM image
       check_value "$1" "$2"
       vm_file_owner="$2"
       shift 2
       ;;
     --fileperms)          # switch
-      # VM file permissions
+      # Set permissions of a file within VM image
       check_value "$1" "$2"
       vm_file_perms="$2"
       shift 2
@@ -1454,7 +1478,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --sshkey)             # switch
-      # SSH username
+      # SSH key 
       check_value "$1" "$2"
       ssh_key="$2"
       shift 2
@@ -1494,7 +1518,7 @@ while test $# -gt 0; do
       exit
       ;;
     --virtdir)            # switch
-      # VM base directory
+      # VM/libvirt base directory
       check_value "$1" "$2"
       virt_dir="$2"
       shift 2
@@ -1537,28 +1561,28 @@ if [ "$do_get_image" = "true" ]; then
   get_image
 fi
 if [ "$do_create_pool" = "true" ]; then
-  create_pool "$pool_name" "$pool_dir"
+  create_pool
 fi
 if [ "$do_create_vm" = "true" ]; then
   create_vm
 fi
 if [ "$do_start_vm" = "true" ]; then
-  start_vm "$vm_name"
+  start_vm
 fi
 if [ "$do_stop_vm" = "true" ]; then
-  stop_vm "$vm_name"
+  stop_vm
 fi
 if [ "$do_delete_vm" = "true" ]; then
   delete_vm
 fi
 if [ "$do_delete_pool" = "true" ]; then
-  delete_pool "$pool_name"
+  delete_pool
 fi
 if [ "$do_connect" = "true" ]; then
-  connect_to_vm "$vm_name"
+  connect_to_vm
 fi
 if [ "$do_post" = "true" ]; then
-  customize_vm $vm_name
+  customize_vm
 fi
 if [ "$do_list_vms" = "true" ]; then
   list_vms

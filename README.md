@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.4.4
+Current version 0.4.6
 
 Prerequisites
 -------------
@@ -42,205 +42,204 @@ You can get help using the -h or --help switch:
 ❯ ./chausie.sh --help
 Usage: chausie.sh [OPTIONS...]
 -----
-
  --action)
- - Action to perform
-
+   Action to perform
  --actions)
- - Print actions
-
+   Print actions
  --arch)
- - Specify architecture
-
- --boot|--boottype)
- - VM boot type (e.g. UEFI)
-
+   Specify architecture
+ --boot*)
+   VM boot type (e.g. UEFI)
  --bridge)
- - VM network bridge
-
+   VM network bridge
  --checkconfig)
- - Check config
-
+   Check config
+ --cidr)
+   VM CIDR
  --cpus)
- - Number of VM CPUs
-
+   Number of VM CPUs
  --cputype)
- - Number of VM CPUs
-
+   Type of CPU within VM
  --debug)
- - Run in debug mode
-
- --dest|--destination|--destfile|--destinationfile)
- - Destination of file to copy into VM disk
-
+   Run in debug mode
+ --dest*)
+   Destination of file to copy into VM disk
  --disk)
- - VM disk file
-
+   VM disk file
+ --dns)
+   VM DNS server
+ --domain*)
+   VM domainname
  --dryrun)
- - Run in dryrun mode
-
+   Run in dryrun mode
+ --filegroup)
+   Set group of a file within VM image
+ --fileowner)
+   Set owner of a file within VM image
+ --fileperms)
+   Set permissions of a file within VM image
  --force)
- - Force mode
-
+   Force mode
+ --fqdn)
+   VM FQDN
  --getimage)
- - Get Image
-
+   Get Image
+ --gateway|--router)
+   VM gateway address
  --graphics)
- - VM Graphics type
-
+   VM Graphics type
+ --gecos)
+   GECOS field for user
+ --groupid|--gid)
+   Group ID
+ --group|--groupname)
+   Group
  --help|--usage|-h)
- - Print help
-
+   Print help
+ --home*)
+   Home directory
+ --hostname)
+   VM hostname
  --imagedir)
- - Image directory
-
+   Image directory
  --imagefile)
- - Image file
-
+   Image file
  --imageurl)
- - Image URL
-
- --hostname|--vmname|--name)
- - Name of VM
-
+   Image URL
+ --ip*)
+   VM IP address
+ --name|--vmname)
+   Name of VM
+ --nettype)
+   Net type (e.g. bridge)
+ --netbus|netdriver)
+   Net bus/driver (e.g. virtio)
+ --netdev|--nic)
+   VM network device (e.g. enp1s0)
  --options)
- - Options
-
+   Options
  --osvariant)
- - Os variant
-
+   Os variant
  --osvers)
- - OS version of image
-
+   OS version of image
+ --packages)
+   Packages to install in VM
+ --password)
+   Password for user (e.g. root)
  --poolname)
- - Pool name
-
+   Pool name
  --pooldir)
- - Pool directory
-
+   Pool directory
+ --post*)
+   Post install script
  --ram)
- - Amount of VM RAM
-
+   Amount of VM RAM
  --size)
- - Size of VM disk
-
- --source|--sourcefile)
- - Source file to copy into VM disk
-
+   Size of VM disk
+ --shellcheck)
+   Run shellcheck on script
+ --source*|--input*)
+   Source file to copy into VM disk
  --sshkey)
- - SSH username
-
- --sshuser)
- - SSH username
-
+   SSH key
  --strict)
- - Run in strict mode
-
+   Run in strict mode
+ --sudoers)
+   Sudoers entry
+ --userid|--uid)
+   User ID
+ --user|--username)
+   Username
  --verbose)
- - Run in verbose mode
-
+   Run in verbose mode
  --version|-V)
- - Print version
-
+   Print version
  --virtdir)
- - VM base directory
+   VM/libvirt base directory
 
 Actions:
 -------
-
  action|help)
- - Print actions help
-
+   Print actions help
  *config)
- - Check config
-
+   Check config
  connect|console)
- - Connect to VM
-
+   Connect to VM console
  copy|upload)
- - Copy file to VM
-
+   Copy file into VM image
  createpool)
- - Create pool
-
+   Create pool
  createvm)
- - Create VM
-
+   Create VM
+ *network*)
+   Configure network
  customize|post*)
- - Do postinstall config
-
+   Do postinstall config
  deletepool)
- - Create pool
-
+   Delete pool
  deletevm)
- - Create VM
-
+   Delete VM
+ getimage)
+   Get image
+ *group*)
+   Add group to to VM image
  *inject*)
- - Inject SSH key
-
+   Inject SSH key into VM image
+ install*)
+   Install packages in VM image
  listvm*)
- - List VMs
-
+   List VMs
  listpool*)
- - List VMs
-
+   List pools
  listnet*)
- - List nets
-
+   List nets
+ *password*)
+   Set password for user in VM image
  run*)
- - Run command in VM
-
+   Run command in VM image
  shellcheck)
- - Check script with shellcheck
-
+   Check script with shellcheck
  shutdown*|stop*)
- - Stop VM
-
+   Stop VM
  start*|boot*)
- - Start VM
-
+   Start VM
+ sudo*)
+   Add sudoers entry to VM image
+ *user*)
+   Add user to VM
  version)
- - Print version
+   Print version
 
 Options:
 -------
-
  debug)
- - Enable debug mode
-
+   Enable debug mode
  dryrun)
- - Enable dryrun mode
-
+   Enable dryrun mode
+ dhcp)
+   Use DHCP
+ force)
+   Force action
  noautoconsole)
- - Disable autoconsole
-
+   Disable autoconsole
  autoconsole)
- - Enable autoconsole
-
+   Enable autoconsole
  noautostart)
- - Disable autoconsole
-
+   Disable autostart
  autostart)
- - Enable autoconsole
-
+   Enable autostart
  nobacking)
- - Enable strict mode
-
+   Don't use backing (creates a full copy of image)
  options|help)
- - Print options help
-
+   Print options help
  noreboot)
- - Disable reboot
-
+   Disable reboot
  reboot)
- - Disable reboot
-
+   Enable reboot
  strict)
- - Enable strict mode
-
+   Enable strict mode
  verbose)
- - Enable verbose mode
-
+   Enable verbose mode
  version)
- - Print version
+   Print version
  ```
