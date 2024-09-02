@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.6
+# Version:      0.4.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -329,9 +329,13 @@ check_config () {
     fi
   done
   if [ "$os_name" = "Linux" ]; then
-    group_check=$( stat -c "%G" /dev/kvm )
+    group_check=$( sudo stat -c "%G" "/dev/kvm" )
     if [ ! "$group_check" = "kvm" ]; then
       execute_command "chown root:kvm /dev/kvm" "su"
+    fi
+    perms_check=$( sudo stat -c "%a" "$image_dir" )
+    if [ ! "$perms_check" = "775" ]; then
+      execute_command "chmod -R 775 $image_dir" "su"
     fi
     for group in kvm libvirt libvirt-qemu; do
       group_check=$( groups |grep -c "$group " )
@@ -349,7 +353,7 @@ fix_libvirt_perms () {
   file_name="$1"
   if [ "$os_name" = "Linux" ]; then
     execute_command "chown root:libvirt-qemu $file_name" "su"
-    execute_command "chmod 770 $file_name" "su"
+    execute_command "chmod 775 $file_name" "su"
   fi
 }
 
