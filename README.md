@@ -102,11 +102,71 @@ you can include both of them in after the --option switch, separated by a comma,
 You can get usage information by usign the --help switch.
 This will return information about the standard switches.
 
+```
+./chausie.sh --help
+```
+
 If you want specific information about just the actions or options,
 you can get this by using the --help switch folled by actions, or options.
 
+```
+./chausie.sh --help actions
+```
+
 If you want full help, i.e. standard switches, actions, and options,
 use the --help switch followed by full/all.
+
+Examples
+--------
+
+List VMs:
+
+```
+./chausie.sh --action listvms
+ Id   Name   State
+-----------------------
+ -    test   shut off
+```
+
+List Pools:
+
+```
+./chausie.sh --action listpools
+ Name   State    Autostart
+----------------------------
+ test   active   no
+```
+
+List Nets:
+
+```
+./chausie.sh --action listnets
+ Name      State      Autostart   Persistent
+----------------------------------------------
+ default   inactive   no          yes
+```
+
+Create VM with latest LTS cloud image:
+
+```
+./chausie.sh --action createvm --name test
+Formatting '/var/lib/libvirt/images/test/test.qcow2', fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=21474836480 backing_file=/var/lib/libvirt/images/releases/ubuntu-24.04-server-cloudimg-amd64.img backing_fmt=qcow2 lazy_refcounts=off refcount_bits=16
+
+Starting install...
+Creating domain...                                                                                                                                                                    |    0 B  00:00:00
+Domain creation completed.
+You can restart your domain by running:
+  virsh --connect qemu:///system start test
+```
+
+Delete VM:
+
+```
+./chausie.sh --action deletevm --name test
+```
+
+Detailed Usage
+--------------
 
 Standard help:
 
