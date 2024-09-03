@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.1
+# Version:      0.5.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -737,6 +737,14 @@ add_sudoers () {
   upload_file
 }
 
+# Create SSH server keys
+
+create_keys () {
+  stop_vm
+  vm_command="ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -t ed25519  -N \"\""
+  run_command
+}
+
 # List VMs
 
 list_vms () {
@@ -1047,6 +1055,10 @@ process_actions () {
     start*|boot*)     # action
       # Start VM
       start_vm
+      ;;
+    sshkey*)
+      # Generate root SSH keys for SSH server
+      create_keys
       ;;
     sudo*)            # action
       # Add sudoers entry to VM image
