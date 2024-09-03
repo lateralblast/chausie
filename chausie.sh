@@ -996,6 +996,7 @@ process_actions () {
       check_config
       create_pool
       create_vm
+      create_keys
       ;;
     *network*)        # action
       # Configure network
