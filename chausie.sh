@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.9
+# Version:      0.5.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -609,8 +609,7 @@ run_command () {
 # Set password
 
 set_password () {
-  vm_command="virt-customize -a $vm_disk --root-password password:$vm_password"
-  run_command
+  execute_command "virt-customize -a $vm_disk --root-password password:$vm_password"
 }
 
 # Customize VM

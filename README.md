@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.4.9
+Current version 0.5.0
 
 Prerequisites
 -------------
@@ -173,10 +173,34 @@ Create default user (ubuntu), inject SSH keys, and add to sudoers:
 ./chausie.sh --action user,injectkeys,sudoers --name test
 ```
 
+Set root password:
+
+```
+./chausie.sh --action password --user root --password P455w0rd --name test
+```
+
 Delete VM:
 
 ```
 ./chausie.sh --action deletevm --name test
+```
+
+Start VM:
+
+```
+./chausie.sh --action startvm --name test
+```
+
+Connect VM:
+
+```
+./chausie.sh --action connect --name test
+```
+
+Stop VM:
+
+```
+./chausie.sh --action stopvm --name test
 ```
 
 The dryrun with the verbose option can be useful for testing/reviewing workflow, e.g.
