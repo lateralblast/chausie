@@ -232,6 +232,102 @@ Usage: chausie.sh [OPTIONS...]
    VM/libvirt base directory
 ```
 
+Options help:
+
+```
+./chausie.sh --help options
+Options:
+-------
+ debug)
+   Enable debug mode
+ dryrun)
+   Enable dryrun mode (don't execute commands)
+ dhcp)
+   Use DHCP
+ force)
+   Force action
+ noautoconsole)
+   Disable autoconsole
+ autoconsole)
+   Enable autoconsole
+ noautostart)
+   Disable autostart
+ autostart)
+   Enable autostart
+ nobacking)
+   Don't use backing (creates a full copy of image)
+ options|help)
+   Print options help
+ noreboot)
+   Disable reboot
+ reboot)
+   Enable reboot
+ strict)
+   Enable strict mode
+ verbose)
+   Enable verbose mode
+ version)
+   Print version
+```
+
+Actions help:
+
+```
+./chausie.sh --help actions
+Actions:
+-------
+ action|help)
+   Print actions help
+ *config)
+   Check config
+ connect|console)
+   Connect to VM console
+ copy|upload)
+   Copy file into VM image
+ createpool)
+   Create pool
+ createvm)
+   Create VM
+ *network*)
+   Configure network
+ customize|post*)
+   Do postinstall config
+ deletepool)
+   Delete pool
+ deletevm)
+   Delete VM
+ getimage)
+   Get image
+ *group*)
+   Add group to to VM image
+ *inject*)
+   Inject SSH key into VM image
+ install*)
+   Install packages in VM image
+ listvm*)
+   List VMs
+ listpool*)
+   List pools
+ listnet*)
+   List nets
+ *password*)
+   Set password for user in VM image
+ run*)
+   Run command in VM image
+ shellcheck)
+   Check script with shellcheck
+ shutdown*|stop*)
+   Stop VM
+ start*|boot*)
+   Start VM
+ sudo*)
+   Add sudoers entry to VM image
+ *user*)
+   Add user to VM
+ version)
+   Print version
+```
+
 Detailed Examples
 -----------------
 
