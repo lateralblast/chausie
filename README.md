@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.4.7
+Current version 0.4.8
 
 Prerequisites
 -------------
@@ -19,9 +19,11 @@ Required packages:
 - libosinfo-bin
 - libguestfs-tools
 
-You'll also need to configure network bridges (the default is br0, but can be changed).
+You'll also need to configure network bridges (the default is br0, but can be changed)
+if you want to use the default settings. You could configure it with NAT, or internal/
+host-only networking, but I haven't looked at those options yet.
 
-This can be done on Ubuntu by editing the netplan file located in /etc/netplan.
+Configuring bridges on Ubuntu can be done on Ubuntu by editing the netplan file located in /etc/netplan.
 
 An example of a netplan file wihout bridges configured:
 
@@ -57,7 +59,7 @@ network:
   version: 2
 ```
 
-One the change has been done it can be enabled by:
+Once the change has been done it can be enabled by:
 
 ```
 sudo netplan apply
@@ -68,6 +70,9 @@ Introduction
 
 This script is designed to automate/simplify the creation of KVM VMs from cloud images.
 
+Background
+----------
+
 I wrote this script as I was tired of Canonical's inconsistent cloud-init support.
 
 I understand having some differences between physical and virtual machines, e.g.
@@ -77,13 +82,163 @@ to bootstrap the image (e.g. configure network, and SSH keys), install ansible,
 then use my existible ansible workflow to finish configuring the VM rather than
 using cloud-init.
 
-Examples
---------
+Usage
+-----
+
+If you want to set mulitple options, e.g. enable verbose and dryrun modes,
+ou can include both of them in after the --option switch, separated by a comma, e.g.
+
+```
+./chausie.sh --action createvm --options verbose,dryrun
+```
+
+Similarly, if you want to set mulitple options, e.g. listvms and listpools,
+you can include both of them in after the --option switch, separated by a comma, e.g.
+
+```
+./chausie.sh --action listvms,listpools
+```
+
+You can get usage information by usign the --help switch.
+This will return information about the standard switches.
+
+If you want specific information about just the actions or options,
+you can get this by using the --help switch folled by actions, or options.
+
+If you want full help, i.e. standard switches, actions, and options,
+use the --help switch followed by full/all.
+
+Standard help:
+
+```
+./chausie.sh --help
+Usage: chausie.sh [OPTIONS...]
+-----
+ --action)
+   Action to perform (e.g. createvm,deletevm)
+ --actions)
+   Print available actions
+ --arch)
+   Specify architecture
+ --boot*)
+   VM boot type (e.g. UEFI)
+ --bridge)
+   VM network bridge
+ --checkconfig)
+   Check config
+ --cidr)
+   VM CIDR
+ --cpus)
+   Number of VM CPUs
+ --cputype)
+   Type of CPU within VM
+ --debug)
+   Run in debug mode
+ --dest*)
+   Destination of file to copy into VM disk
+ --disk)
+   VM disk file
+ --dns)
+   VM DNS server
+ --domain*)
+   VM domainname
+ --dryrun)
+   Run in dryrun mode (don't execute commands)
+ --filegroup)
+   Set group of a file within VM image
+ --fileowner)
+   Set owner of a file within VM image
+ --fileperms)
+   Set permissions of a file within VM image
+ --force)
+   Force mode
+ --fqdn)
+   VM FQDN
+ --getimage)
+   Get Image
+ --gateway|--router)
+   VM gateway address
+ --graphics)
+   VM Graphics type
+ --gecos)
+   GECOS field for user
+ --groupid|--gid)
+   Group ID
+ --group|--groupname)
+   Group
+ --help|--usage|-h)
+   Print help
+ --home*)
+   Home directory
+ --hostname)
+   VM hostname
+ --imagedir)
+   Image directory
+ --imagefile)
+   Image file
+ --imageurl)
+   Image URL
+ --ip*)
+   VM IP address
+ --name|--vmname)
+   Name of VM
+ --nettype)
+   Net type (e.g. bridge)
+ --netbus|netdriver)
+   Net bus/driver (e.g. virtio)
+ --netdev|--nic)
+   VM network device (e.g. enp1s0)
+ --option)
+   Options (e.g. verbose,dryrun)
+ --options)
+   Print available options
+ --osvariant)
+   Os variant
+ --osvers)
+   OS version of image
+ --packages)
+   Packages to install in VM
+ --password)
+   Password for user (e.g. root)
+ --poolname)
+   Pool name
+ --pooldir)
+   Pool directory
+ --post*)
+   Post install script
+ --ram)
+   Amount of VM RAM
+ --size)
+   Size of VM disk
+ --shellcheck)
+   Run shellcheck on script
+ --source*|--input*)
+   Source file to copy into VM disk
+ --sshkey)
+   SSH key
+ --strict)
+   Run in strict mode
+ --sudoers)
+   Sudoers entry
+ --userid|--uid)
+   User ID
+ --user|--username)
+   Username
+ --verbose)
+   Run in verbose mode
+ --version|-V)
+   Print version
+ --virtdir)
+   VM/libvirt base directory
+```
+
+Detailed Examples
+-----------------
 
 Create test VM (this will use defaults and also fetch the latest LTS image if it isn't present):
 
 ```
-./chausie.sh --action createvm --name test --options verbose
+./chausie.sh --action createvm --name test --option verbose
 Notice:       Enabling debug mode
 Notice:       Enabling strict mode
 Notice:       Setting VM arch to "amd64"
@@ -158,216 +313,8 @@ You can restart your domain by running:
   virsh --connect qemu:///system start test
 ```
 
-Usage
------
-
-You can get help using the -h or --help switch:
-
-```
-❯ ./chausie.sh --help
-Usage: chausie.sh [OPTIONS...]
------
- --action)
-   Action to perform
- --actions)
-   Print actions
- --arch)
-   Specify architecture
- --boot*)
-   VM boot type (e.g. UEFI)
- --bridge)
-   VM network bridge
- --checkconfig)
-   Check config
- --cidr)
-   VM CIDR
- --cpus)
-   Number of VM CPUs
- --cputype)
-   Type of CPU within VM
- --debug)
-   Run in debug mode
- --dest*)
-   Destination of file to copy into VM disk
- --disk)
-   VM disk file
- --dns)
-   VM DNS server
- --domain*)
-   VM domainname
- --dryrun)
-   Run in dryrun mode
- --filegroup)
-   Set group of a file within VM image
- --fileowner)
-   Set owner of a file within VM image
- --fileperms)
-   Set permissions of a file within VM image
- --force)
-   Force mode
- --fqdn)
-   VM FQDN
- --getimage)
-   Get Image
- --gateway|--router)
-   VM gateway address
- --graphics)
-   VM Graphics type
- --gecos)
-   GECOS field for user
- --groupid|--gid)
-   Group ID
- --group|--groupname)
-   Group
- --help|--usage|-h)
-   Print help
- --home*)
-   Home directory
- --hostname)
-   VM hostname
- --imagedir)
-   Image directory
- --imagefile)
-   Image file
- --imageurl)
-   Image URL
- --ip*)
-   VM IP address
- --name|--vmname)
-   Name of VM
- --nettype)
-   Net type (e.g. bridge)
- --netbus|netdriver)
-   Net bus/driver (e.g. virtio)
- --netdev|--nic)
-   VM network device (e.g. enp1s0)
- --options)
-   Options
- --osvariant)
-   Os variant
- --osvers)
-   OS version of image
- --packages)
-   Packages to install in VM
- --password)
-   Password for user (e.g. root)
- --poolname)
-   Pool name
- --pooldir)
-   Pool directory
- --post*)
-   Post install script
- --ram)
-   Amount of VM RAM
- --size)
-   Size of VM disk
- --shellcheck)
-   Run shellcheck on script
- --source*|--input*)
-   Source file to copy into VM disk
- --sshkey)
-   SSH key
- --strict)
-   Run in strict mode
- --sudoers)
-   Sudoers entry
- --userid|--uid)
-   User ID
- --user|--username)
-   Username
- --verbose)
-   Run in verbose mode
- --version|-V)
-   Print version
- --virtdir)
-   VM/libvirt base directory
-
-Actions:
--------
- action|help)
-   Print actions help
- *config)
-   Check config
- connect|console)
-   Connect to VM console
- copy|upload)
-   Copy file into VM image
- createpool)
-   Create pool
- createvm)
-   Create VM
- *network*)
-   Configure network
- customize|post*)
-   Do postinstall config
- deletepool)
-   Delete pool
- deletevm)
-   Delete VM
- getimage)
-   Get image
- *group*)
-   Add group to to VM image
- *inject*)
-   Inject SSH key into VM image
- install*)
-   Install packages in VM image
- listvm*)
-   List VMs
- listpool*)
-   List pools
- listnet*)
-   List nets
- *password*)
-   Set password for user in VM image
- run*)
-   Run command in VM image
- shellcheck)
-   Check script with shellcheck
- shutdown*|stop*)
-   Stop VM
- start*|boot*)
-   Start VM
- sudo*)
-   Add sudoers entry to VM image
- *user*)
-   Add user to VM
- version)
-   Print version
-
-Options:
--------
- debug)
-   Enable debug mode
- dryrun)
-   Enable dryrun mode
- dhcp)
-   Use DHCP
- force)
-   Force action
- noautoconsole)
-   Disable autoconsole
- autoconsole)
-   Enable autoconsole
- noautostart)
-   Disable autostart
- autostart)
-   Enable autostart
- nobacking)
-   Don't use backing (creates a full copy of image)
- options|help)
-   Print options help
- noreboot)
-   Disable reboot
- reboot)
-   Enable reboot
- strict)
-   Enable strict mode
- verbose)
-   Enable verbose mode
- version)
-   Print version
- ```
+Detailed Usage
+--------------
 
 Running the checkconfig action will check the local configuration and install required packages.
 It's a good idea to logout and login after this as it will add the user account to required groups (e.g. libvirt)

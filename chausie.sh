@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.7
+# Version:      0.4.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -76,8 +76,13 @@ print_options () {
 print_usage () {
   usage="$1"
   case $usage in
+    all|full)
+      print_help
+      print_actions
+      print_options
+      ;;
     help)
-      print help
+      print_help
       ;;
     action*)
       print_actions
@@ -87,8 +92,6 @@ print_usage () {
       ;;
     *)
       print_help
-      print_actions
-      print_options
       ;;
   esac
 }
@@ -179,34 +182,11 @@ set_defaults () {
   do_dryrun="false"
   do_debug="false"
   do_force="false"
-  do_post="false"
-  do_command="false"
   do_shellcheck="false"
   do_backing="true"
-  do_create_vm="false"
-  do_delete_vm="false"
-  do_start_vm="false"
-  do_stop_vm="false"
-  do_check_config="false"
-  do_get_image="false"
-  do_create_pool="false"
-  do_delete_pool="false"
   do_autoconsole="false"
   do_autostart="false"
   do_reboot="false"
-  do_connect="false"
-  do_upload="false"
-  do_list_vms="false"
-  do_list_pools="false"
-  do_list_nets="false"
-  do_inject_key="false"
-  do_password="false"
-  do_network="false"
-  do_hostname="false"
-  do_install="false"
-  do_useradd="false"
-  do_groupadd="false"
-  do_sudoers="false"
   vm_dhcp="false"
   vm_cpus=""
   vm_ram=""
@@ -438,7 +418,7 @@ check_image_exists () {
     do_exit
   else
     verbose_message "Found Cloud Image file \"$release_dir/$image_file\"" "info"
-  fi 
+  fi
 }
 
 # Check VM disk exists
@@ -449,7 +429,7 @@ check_disk_exists () {
     do_exit
   else
     verbose_message "Creating VM disk file \"$vm_disk\"" "info"
-  fi  
+  fi
 }
 
 # Create VM disk
@@ -562,7 +542,7 @@ inject_key () {
   check_vm_name
   vm_check=$(virsh list --all |grep -c $vm_name )
   if [[ "$vm_check" = "1" ]]; then
-    stop_vm "$vm_name"
+    stop_vm
     if [ -f "$ssh_key" ]; then
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
         execute_command "virt-customize -a $vm_disk --ssh-inject $vm_username:file:$ssh_key" "linuxsu"
@@ -588,14 +568,14 @@ upload_file () {
         execute_command "virt-customize -a $vm_disk --upload $source_file:$dest_file" "linuxsu"
         if [ ! "$vm_file_owner" = "" ]; then
           if [ ! "$vm_file_group" = "" ]; then
-            vm_command="chown $vm_file_owner $dest_file" 
+            vm_command="chown $vm_file_owner $dest_file"
           else
-            vm_command="chown $vm_file_owner:$vm_file_group $dest_file" 
+            vm_command="chown $vm_file_owner:$vm_file_group $dest_file"
           fi
           run_command
         fi
         if [ ! "$vm_file_perms" = "" ]; then
-          vm_command="chmod $vm_file_perms $dest_file" 
+          vm_command="chmod $vm_file_perms $dest_file"
           run_command
         fi
       else
@@ -629,8 +609,8 @@ run_command () {
 # Set password
 
 set_password () {
-  vm_command="virt-customize -a $vm_disk --root-password password:$vm_password" 
-  run_command "$vm_command"
+  vm_command="virt-customize -a $vm_disk --root-password password:$vm_password"
+  run_command
 }
 
 # Customize VM
@@ -653,7 +633,7 @@ customize_vm () {
 # Print contents of file
 
 print_contents () {
-  file_name="$1" 
+  file_name="$1"
   if [ -f "$file_name" ]; then
     if [ "$do_verbose" = "true" ]; then
       verbose_message "Contents of file \"$file_name\"" "info"
@@ -685,7 +665,7 @@ configure_network () {
     source_file="$temp_file"
     touch "$source_file"
     chmod 700 "$source_file"
-    print_contents "$source_file" 
+    print_contents "$source_file"
     dest_file="/etc/netplan/01-netcfg.yaml"
     vm_file_perms="600"
     vm_file_owner="root"
@@ -706,7 +686,7 @@ set_hostname () {
     fi
   fi
   vm_command="hostnamectl set-hostname $vm_fqdn"
-  run_command "$vm_command"
+  run_command
 }
 
 install_packages () {
@@ -729,7 +709,7 @@ add_group () {
   else
     vm_command="groupadd -g $vm_groupid $vm_groupname"
   fi
-  run_command "$vm_command"
+  run_command
 }
 
 add_user () {
@@ -739,7 +719,7 @@ add_user () {
   else
     vm_command="useradd -u $vm_userid -G $vm_groupname -m -d $vm_home_dir $vm_username"
   fi
-  run_command "$vm_command"
+  run_command
 }
 
 add_sudoers () {
@@ -916,7 +896,7 @@ reset_defaults () {
   fi
   verbose_message "Setting cache directory to \"$cache_dir\"" "notice"
   if [ "$vm_username" = "" ]; then
-    if [ "$do_password" = "true" ]; then
+    if [[ "$actions" =~ "password" ]]; then
       vm_username="root"
     else
       vm_username="ubuntu"
@@ -977,84 +957,84 @@ process_actions () {
       ;;
     *config)          # action
       # Check config
-      do_check_config="true"
+      check_config
       ;;
     connect|console)  # action
       # Connect to VM console
-      do_connect="true"
+      connect_to_vm
       ;;
     copy|upload)      # action
       # Copy file into VM image
-      do_upload="true"
+      upload_file
       ;;
     createpool)       # action
       # Create pool
-      do_create_pool="true"
+      create_pool
       ;;
     createvm)         # action
       # Create VM
-      do_get_image="true"
-      do_check_config="true"
-      do_create_pool="true"
-      do_create_vm="true"
+      get_image
+      check_config
+      create_pool
+      create_vm
       ;;
     *network*)        # action
       # Configure network
-      do_network="true"
+      configure_network
       ;;
     customize|post*)  # action
       # Do postinstall config
-      do_post="true"
+      customize_vm
       ;;
     deletepool)       # action
       # Delete pool
-      do_delete_pool="true"
+      delete_pool
       ;;
     deletevm)         # action
       # Delete VM
-      do_check_config="true"
-      do_delete_pool="true"
-      do_delete_vm="true"
+      check_config
+      delete_pool
+      delete_vm
       ;;
     getimage)         # action
       # Get image
       do_get_image="true"
-      ;; 
+      ;;
     *group*)          # action
       # Add group to to VM image
-      do_groupadd="true" 
+      add_group
       ;;
     *host*)
       # Set hostname in a VM image
-      do_hostname="true"
+      set_hostname
       ;;
     *inject*)         # action
       # Inject SSH key into VM image
-      do_inject_key="true"
+      inject_key
       ;;
     install*)         # action
       # Install packages in VM image
-      do_install="true"
+      install_packages
       ;;
     listvm*)          # action
       # List VMs
-      do_list_vms="true"
+      list_vms
       ;;
     listpool*)        # action
       # List pools
-      do_list_pools="true"
+      list_pools
       ;;
     listnet*)         # action
       # List nets
-      do_list_nets="true"
+      list_nets
       ;;
     *password*)       # action
       # Set password for user in VM image
-      do_password="true"
+      set_password
       ;;
     run*)             # action
       # Run command in VM image
-      do_command="true"
+      run_command
       ;;
     shellcheck)       # action
       # Check script with shellcheck
@@ -1062,19 +1042,19 @@ process_actions () {
       ;;
     shutdown*|stop*)  # action
       # Stop VM
-      do_stop_vm="true"
+      stop_vm
       ;;
     start*|boot*)     # action
       # Start VM
-      do_start_vm="true"
+      start_vm
       ;;
     sudo*)            # action
       # Add sudoers entry to VM image
-      do_sudoers="true"
+      add_sudoers
       ;;
     *user*)           # action
       # Add user to VM
-      do_useradd="true"
+      add_user
       ;;
     version)          # action
       # Print version
@@ -1098,7 +1078,7 @@ process_options () {
       do_debug="true"
       ;;
     dryrun)         # option
-      # Enable dryrun mode
+      # Enable dryrun mode (don't execute commands)
       do_dryrun="true"
       ;;
     dhcp)           # option
@@ -1161,6 +1141,8 @@ process_options () {
   esac
 }
 
+
+
 # Set defaults
 
 set_defaults
@@ -1186,14 +1168,14 @@ fi
 while test $# -gt 0; do
   case $1 in
     --action)             # switch
-      # Action to perform
+      # Action to perform (e.g. createvm,deletevm)
       check_value "$1" "$2"
       actions="$2"
       do_actions="true"
       shift 2
       ;;
     --actions)            # switch
-      # Print actions
+      # Print available actions
       print_usage "actions"
       shift
       exit
@@ -1218,8 +1200,9 @@ while test $# -gt 0; do
       ;;
     --checkconfig)        # switch
       # Check config
-      do_check_config="true"
+      check_config
       shift
+      exit
       ;;
     --cidr)               # switch
       # VM CIDR
@@ -1304,8 +1287,9 @@ while test $# -gt 0; do
       ;;
     --getimage)           # switch
       # Get Image
-      do_get_image="true"
+      get_image
       shift
+      exit
       ;;
     --gateway|--router)   # switch
       # VM gateway address
@@ -1332,7 +1316,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --group|--groupname)  # switch
-      # Group 
+      # Group
       check_value "$1" "$2"
       vm_groupname="$2"
       shift 2
@@ -1344,13 +1328,13 @@ while test $# -gt 0; do
       exit
       ;;
     --home*)              # switch
-      # Home directory 
+      # Home directory
       check_value "$1" "$2"
       vm_home_dir="$2"
       shift 2
       ;;
     --hostname)           # switch
-      # VM hostname 
+      # VM hostname
       check_value "$1" "$2"
       vm_hostname="$2"
       shift 2
@@ -1403,12 +1387,18 @@ while test $# -gt 0; do
       vm_net_dev="$2"
       shift 2
       ;;
-    --options)            # switch
-      # Options
+    --option)            # switch
+      # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
       options="$2"
       do_options="true"
       shift 2
+      ;;
+    --options)            # switch
+      # Print available options
+      print_usage "options"
+      shift
+      exit
       ;;
     --osvariant)          # switch
       # Os variant
@@ -1482,7 +1472,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --sshkey)             # switch
-      # SSH key 
+      # SSH key
       check_value "$1" "$2"
       ssh_key="$2"
       shift 2
@@ -1538,15 +1528,17 @@ while test $# -gt 0; do
   esac
 done
 
+
 if [ "$do_shellcheck" = "true" ]; then
   check_shellcheck
   exit
 fi
-if [ "$do_actions" = "true" ]; then
-  process_actions "$actions"
-fi
+
+# Reset default based on switches
 
 reset_defaults
+
+# Process options
 
 if [ "$do_options" = "true" ]; then
   if [[ "$options" =~ "," ]]; then
@@ -1558,72 +1550,16 @@ if [ "$do_options" = "true" ]; then
     process_options "$options"
   fi
 fi
-if [ "$do_check_config" = "true" ]; then
-  check_config
-fi
-if [ "$do_get_image" = "true" ]; then
-  get_image
-fi
-if [ "$do_create_pool" = "true" ]; then
-  create_pool
-fi
-if [ "$do_create_vm" = "true" ]; then
-  create_vm
-fi
-if [ "$do_start_vm" = "true" ]; then
-  start_vm
-fi
-if [ "$do_stop_vm" = "true" ]; then
-  stop_vm
-fi
-if [ "$do_delete_vm" = "true" ]; then
-  delete_vm
-fi
-if [ "$do_delete_pool" = "true" ]; then
-  delete_pool
-fi
-if [ "$do_connect" = "true" ]; then
-  connect_to_vm
-fi
-if [ "$do_post" = "true" ]; then
-  customize_vm
-fi
-if [ "$do_list_vms" = "true" ]; then
-  list_vms
-fi
-if [ "$do_list_pools" = "true" ]; then
-  list_pools
-fi
-if [ "$do_list_nets" = "true" ]; then
-  list_nets
-fi
-if [ "$do_inject_key" = "true" ]; then
-  inject_key
-fi
-if [ "$do_upload" = "true" ]; then
-  upload_file
-fi
-if [ "$do_command" = "true" ]; then
-  run_command
-fi
-if [ "$do_password" = "true" ]; then
-  set_password
-fi
-if [ "$do_network" = "true" ]; then
-  configure_network
-fi
-if [ "$do_hostname" = "true" ]; then
-  set_hostname
-fi
-if [ "$do_install" = "true" ]; then
-  install_packages
-fi
-if [ "$do_useradd" = "true" ]; then
-  add_user
-fi
-if [ "$do_groupadd" = "true" ]; then
-  add_group
-fi
-if [ "$do_sudoers" = "true" ]; then
-  add_sudoers
+
+# Process actions
+
+if [ "$do_actions" = "true" ]; then
+  if [[ "$actions" =~ "," ]]; then
+    IFS="," read -r -a array <<< "$actions"
+    for action in "${array[@]}"; do
+      process_actions "$action"
+    done
+  else
+    process_actions "$actions"
+  fi
 fi
