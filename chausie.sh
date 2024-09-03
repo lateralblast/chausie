@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.4.8
+# Version:      0.4.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -275,7 +275,7 @@ execute_command () {
   fi
   if [ "$privilege" = "linuxsu" ] || [ "$privilege" = "sulinux" ]; then
     if [ "$os_name" = "Linux" ]; then
-      command="sudo sh -c '$command'"
+      command="sudo sh -c \"$command\""
     fi
   fi
   if [ "$do_verbose" = "true" ]; then
@@ -715,9 +715,9 @@ add_group () {
 add_user () {
   add_group
   if [ "$user_id" = "" ]; then
-    vm_command="useradd -G $vm_groupname -m -d $vm_home_dir $vm_username"
+    vm_command="useradd -g $vm_groupname -m -d $vm_home_dir $vm_username"
   else
-    vm_command="useradd -u $vm_userid -G $vm_groupname -m -d $vm_home_dir $vm_username"
+    vm_command="useradd -u $vm_userid -g $vm_groupname -m -d $vm_home_dir $vm_username"
   fi
   run_command
 }
@@ -928,7 +928,7 @@ reset_defaults () {
   fi
   verbose_message "Setting sudoers entry to \"$vm_sudoers\"" "notice"
   if [ "$ssh_key" = "" ]; then
-    ssh_key="$os_home/.ssh/id_rsa.pub"
+    ssh_key=$( find "$os_home/.ssh" -name "*.pub" |head -1 )
   fi
   verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
   if [ "$vm_ip" = "dhcp" ]; then

@@ -96,3 +96,5 @@
 # Fixed permissions and updated documentation
 # 0.4.8: Tue  3 Sep 2024 14:40:51 AEST
 # Added ability to perform multiple actions in one command line
+# 0.4.9: Tue Sep  3 05:34:58 PM AEST 2024
+# Fixed bugs and updated documentation

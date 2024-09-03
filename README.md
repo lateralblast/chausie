@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.4.8
+Current version 0.4.9
 
 Prerequisites
 -------------
@@ -99,6 +99,14 @@ you can include both of them in after the --option switch, separated by a comma,
 ./chausie.sh --action listvms,listpools
 ```
 
+Obviously you need to be careful about chaining actions, e.g.
+you need to add user before injecting keys and adding to sudoers,
+so you'd order those actions:
+
+```
+./chausie.sh --action user,injectkeys,sudoers --user ubuntu --name test
+```
+
 You can get usage information by usign the --help switch.
 This will return information about the standard switches.
 
@@ -159,10 +167,82 @@ You can restart your domain by running:
   virsh --connect qemu:///system start test
 ```
 
+Create default user (ubuntu), inject SSH keys, and add to sudoers:
+
+```
+./chausie.sh --action user,injectkeys,sudoers --name test
+```
+
 Delete VM:
 
 ```
 ./chausie.sh --action deletevm --name test
+```
+
+The dryrun with the verbose option can be useful for testing/reviewing workflow, e.g.
+
+```
+./chausie.sh --action network --ip 192.168.11.101 --cidr 22 --gateway 192.168.11.254 --name test --option verbose,dryrun
+Notice:       Enabling debug mode
+Notice:       Enabling strict mode
+Notice:       Setting VM arch to "amd64"
+Notice:       Setting CPU type to "host"
+Notice:       Setting VM name to "test"
+Notice:       Setting VM CPUs to "2"
+Notice:       Setting VM RAM to "4096"
+Notice:       Setting VM size to "20G"
+Notice:       Setting OS version to "24.04"
+Notice:       Setting VM boot type to "uefi"
+Notice:       Setting VM vm_graphics to "none"
+Notice:       Setting VM hostname to "chausie"
+Notice:       Setting VM network type to "bridge"
+Notice:       Setting VM bridge to "br0"
+Notice:       Setting VM network driver/bus to "virtio"
+Notice:       Setting VM network device to "enp1s0"
+Notice:       Setting VM CIDR to "22"
+Notice:       Setting VM DNS server to "8.8.8.8"
+Notice:       Setting Cloud Image file to "ubuntu-24.04-server-cloudimg-amd64.img"
+Notice:       Setting Cloud Image URL to "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+Notice:       Setting libvirt directory to "/var/lib/libvirt"
+Notice:       Setting Image directory to "/var/lib/libvirt/images"
+Notice:       Setting VM disk to "/var/lib/libvirt/images/test/test.qcow2"
+Notice:       Setting pool name to "test"
+Notice:       Setting pool directory to "/var/lib/libvirt/images/test"
+Notice:       Setting release directory to "/var/lib/libvirt/images/releases"
+Notice:       Setting VM OS variant to "ubuntu24.04"
+Notice:       Setting post install script to "/home/localuser/Code/chausie/scripts/post_install.sh"
+Notice:       Setting cache directory to "/home/localuser/.cache/virt-manager"
+Notice:       Setting username to "ubuntu"
+Notice:       Setting password to "ubuntu"
+Notice:       Setting user ID to "1000"
+Notice:       Setting group to "ubuntu"
+Notice:       Setting group ID to "1000"
+Notice:       Setting home directory to "/home/ubuntu"
+Notice:       Setting sudoers entry to "ALL=(ALL) NOPASSWD:ALL"
+Notice:       Setting SSH key to "/home/localuser/.ssh/id_ed25519.pub"
+Notice:       Setting network to static
+Notice:       Seting IP to 192.168.11.101
+Notice:       Seting CIDR to 22
+Notice:       Seting gateway to 192.168.11.254
+Notice:       Seting DNS server to 8.8.8.8
+Notice:       Directory "/var/lib/libvirt/images/releases" already exists
+Executing:    sudo sh -c "virsh shutdown test"
+Information:  Contents of file "/tmp/01-netcfg.yaml"
+network
+  ethernets:
+    enp1s0:
+      dhcp4: false
+      addresses: [192.168.11.101/22]
+      nameservers: [8.8.8.8]
+    routes:
+      - to: default
+        via: 192.168.11.254
+  version: 2
+Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --upload /tmp/01-netcfg.yaml:/etc/netplan/01-netcfg.yaml"
+Executing:    sudo sh -c "virsh shutdown test"
+Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --run-command 'chown root: /etc/netplan/01-netcfg.yaml'"
+Executing:    sudo sh -c "virsh shutdown test"
+Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --run-command 'chmod 600 /etc/netplan/01-netcfg.yaml'"
 ```
 
 Detailed Usage
@@ -422,8 +502,8 @@ Notice:       Setting pool name to "test"
 Notice:       Setting pool directory to "/var/lib/libvirt/images/test"
 Notice:       Setting release directory to "/var/lib/libvirt/images/releases"
 Notice:       Setting VM OS variant to "ubuntu24.04"
-Notice:       Setting post install script to "/home/sysadmin/Code/chausie/scripts/post_install.sh"
-Notice:       Setting cache directory to "/home/sysadmin/.cache/virt-manager"
+Notice:       Setting post install script to "/home/localuser/Code/chausie/scripts/post_install.sh"
+Notice:       Setting cache directory to "/home/localuser/.cache/virt-manager"
 Notice:       Setting username to "ubuntu"
 Notice:       Setting password to "ubuntu"
 Notice:       Setting user ID to "1000"
@@ -431,12 +511,12 @@ Notice:       Setting group to "ubuntu"
 Notice:       Setting group ID to "1000"
 Notice:       Setting home directory to "/home/ubuntu"
 Notice:       Setting sudoers entry to "ALL=(ALL) NOPASSWD:ALL"
-Notice:       Setting SSH key to "/home/sysadmin/.ssh/id_rsa.pub"
+Notice:       Setting SSH key to "/home/localuser/.ssh/id_rsa.pub"
 Notice:       Directory "/var/lib/libvirt/images/releases" already exists
 Information:  Checking config
 Executing:    sudo sh -c 'mkdir -p /var/lib/libvirt'
-Executing:    sudo sh -c 'usermod -a -G libvirt sysadmin'
-Executing:    sudo sh -c 'usermod -a -G libvirt-qemu sysadmin'
+Executing:    sudo sh -c 'usermod -a -G libvirt localuser'
+Executing:    sudo sh -c 'usermod -a -G libvirt-qemu localuser'
 Notice:       Directory "/var/lib/libvirt/images/releases" already exists
 Executing:    sudo sh -c 'cd /var/lib/libvirt/images/releases ; wget https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img'
 --2024-09-02 21:56:41--  https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img
@@ -504,8 +584,8 @@ Notice:       Setting pool name to "chausie"
 Notice:       Setting pool directory to "/var/lib/libvirt/images/chausie"
 Notice:       Setting release directory to "/var/lib/libvirt/images/releases"
 Notice:       Setting VM OS variant to "ubuntu24.04"
-Notice:       Setting post install script to "/home/sysadmin/Code/chausie/scripts/post_install.sh"
-Notice:       Setting cache directory to "/home/sysadmin/.cache/virt-manager"
+Notice:       Setting post install script to "/home/localuser/Code/chausie/scripts/post_install.sh"
+Notice:       Setting cache directory to "/home/localuser/.cache/virt-manager"
 Notice:       Setting username to "ubuntu"
 Notice:       Setting password to "ubuntu"
 Notice:       Setting user ID to "1000"
@@ -513,14 +593,14 @@ Notice:       Setting group to "ubuntu"
 Notice:       Setting group ID to "1000"
 Notice:       Setting home directory to "/home/ubuntu"
 Notice:       Setting sudoers entry to "ALL=(ALL) NOPASSWD:ALL"
-Notice:       Setting SSH key to "/home/sysadmin/.ssh/id_rsa.pub"
+Notice:       Setting SSH key to "/home/localuser/.ssh/id_rsa.pub"
 Notice:       Directory "/var/lib/libvirt/images/releases" already exists
 Information:  Checking config
 Executing:    sudo sh -c 'mkdir -p /var/lib/libvirt'
-Executing:    sudo sh -c 'usermod -a -G kvm sysadmin'
-Executing:    sudo sh -c 'usermod -a -G libvirt sysadmin'
+Executing:    sudo sh -c 'usermod -a -G kvm localuser'
+Executing:    sudo sh -c 'usermod -a -G libvirt localuser'
 usermod: group 'libvirt' does not exist
-Executing:    sudo sh -c 'usermod -a -G libvirt-qemu sysadmin'
+Executing:    sudo sh -c 'usermod -a -G libvirt-qemu localuser'
 usermod: group 'libvirt-qemu' does not exist
 Executing:    sudo sh -c 'apt-get install virt-manager'
 Reading package lists... Done
