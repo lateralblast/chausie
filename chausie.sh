@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.2
+# Version:      0.5.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -208,6 +208,7 @@ set_defaults () {
   vm_cidr=""
   vm_dns=""
   vm_ip=""
+  vm_shell=""
   vm_gateway=""
   vm_bridge=""
   vm_cputype=""
@@ -715,9 +716,9 @@ add_group () {
 add_user () {
   add_group
   if [ "$user_id" = "" ]; then
-    vm_command="useradd -g $vm_groupname -m -d $vm_home_dir $vm_username"
+    vm_command="useradd -g $vm_groupname -s $vm_shell -m -d $vm_home_dir $vm_username"
   else
-    vm_command="useradd -u $vm_userid -g $vm_groupname -m -d $vm_home_dir $vm_username"
+    vm_command="useradd -u $vm_userid -g $vm_groupname -s $vm_shell -m -d $vm_home_dir $vm_username"
   fi
   run_command
 }
@@ -931,6 +932,10 @@ reset_defaults () {
     vm_home_dir="/home/$vm_username"
   fi
   verbose_message "Setting home directory to \"$vm_home_dir\"" "notice"
+  if [ "$vm_shell" = "" ]; then
+    vm_shell="/usr/bin/bash"
+  fi
+  verbose_message "Setting shell to \"$vm_shell\"" "notice"
   if [ "$vm_sudoers" = "" ]; then
     vm_sudoers="ALL=(ALL) NOPASSWD:ALL"
   fi
@@ -1464,6 +1469,12 @@ while test $# -gt 0; do
       # Command to run in VM image
       check_value "$1" "$2"
       vm_command="$2"
+      shift 2
+      ;;
+    --shell)              # switch
+      # User shell in VM image
+      check_value "$1" "$2"
+      vm_shell="$2"
       shift 2
       ;;
     --size)               # switch

@@ -102,3 +102,7 @@
 # Fixed bugs and updated documentation
 # 0.5.1: Tue  3 Sep 2024 18:01:42 AEST
 # Fixed network/netplan config creation
+# 0.5.2: Tue  3 Sep 2024 21:16:54 AEST
+# Added code to generate SSH server keys
+# 0.5.3: Tue  3 Sep 2024 21:25:28 AEST
+# Added code to set shell for user
