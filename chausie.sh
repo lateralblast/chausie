@@ -811,7 +811,7 @@ reset_defaults () {
   fi
   verbose_message "Setting VM vm_graphics to \"$vm_graphics\"" "notice"
   if [ "$vm_hostname" = "" ]; then
-    vm_hostname="$script_name"
+    vm_hostname="$vm_name"
   fi
   verbose_message "Setting VM hostname to \"$vm_hostname\"" "notice"
   if [ "$vm_net_type" = "" ]; then
