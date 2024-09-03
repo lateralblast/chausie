@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.0
+# Version:      0.5.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -649,14 +649,15 @@ configure_network () {
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     stop_vm
     temp_file="/tmp/01-netcfg.yaml"
-    echo "network"                                 > "$temp_file"
+    echo "network:"                                > "$temp_file"
     echo "  ethernets:"                           >> "$temp_file"
     echo "    $vm_net_dev:"                       >> "$temp_file"
     echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
     if [ "$vm_dhcp" = "false" ]; then
       echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
-      echo "      nameservers: [$vm_dns]"         >> "$temp_file"
-      echo "    routes:"                          >> "$temp_file"
+      echo "      nameservers:"                   >> "$temp_file"
+      echo "        addresses: [$vm_dns]"         >> "$temp_file"
+      echo "      routes:"                        >> "$temp_file"
       echo "      - to: default"                  >> "$temp_file"
       echo "        via: $vm_gateway"             >> "$temp_file"
     fi

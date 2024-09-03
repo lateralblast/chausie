@@ -100,3 +100,5 @@
 # Fixed bugs and updated documentation
 # 0.5.0: Tue  3 Sep 2024 17:46:40 AEST
 # Fixed bugs and updated documentation
+# 0.5.1: Tue  3 Sep 2024 18:01:42 AEST
+# Fixed network/netplan config creation
