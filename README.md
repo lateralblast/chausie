@@ -79,7 +79,7 @@ I understand having some differences between physical and virtual machines, e.g.
 ISO based installs versus using Cloud Images, but when my instructions/workflow for 20.04
 and 22.04 stopped working with 24.04, I thought I'd write a script to use virt-customize
 to bootstrap the image (e.g. configure network, and SSH keys), install ansible,
-then use my existible ansible workflow to finish configuring the VM rather than
+then use my existing ansible workflow to finish configuring the VM rather than
 using cloud-init.
 
 Usage
