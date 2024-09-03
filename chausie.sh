@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.3
+# Version:      0.5.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -671,6 +671,12 @@ configure_network () {
     vm_file_perms="600"
     vm_file_owner="root"
     upload_file
+    vm_command="sed -i \"s/#DNS=/DNS=$vm_dns/g\" /etc/systemd/resolved.conf"
+    run_command
+    vm_command="rm /etc/resolv.conf"
+    run_command
+    vm_command="echo \"nameserver $vm_dns\" > /etc/resolv.conf"
+    run_command
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
   fi
