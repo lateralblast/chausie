@@ -364,6 +364,8 @@ Usage: chausie.sh [OPTIONS...]
    VM domainname
  --dryrun)
    Run in dryrun mode
+ --features)
+   VM features
  --filegroup)
    Set group of a file within VM image
  --fileowner)
@@ -392,6 +394,8 @@ Usage: chausie.sh [OPTIONS...]
    Print help
  --home*)
    Home directory
+ --hostdevice)
+   VM host device pass-through
  --hostname)
    VM hostname
  --imagedir)
