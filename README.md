@@ -207,7 +207,7 @@ Start VM:
 ./chausie.sh --action startvm --name test
 ```
 
-Connect VM:
+Connect to VM via console:
 
 ```
 ./chausie.sh --action connect --name test
@@ -222,67 +222,101 @@ Stop VM:
 The dryrun with the verbose option can be useful for testing/reviewing workflow, e.g.
 
 ```
-./chausie.sh --action network --ip 192.168.11.101 --cidr 22 --gateway 192.168.11.254 --name test --option verbose,dryrun
+ ./chausie.sh --action createvm --name testvm --option verbose,dryrun
 Notice:       Enabling debug mode
 Notice:       Enabling strict mode
 Notice:       Setting VM arch to "amd64"
 Notice:       Setting CPU type to "host"
-Notice:       Setting VM name to "test"
+Notice:       Setting VM name to "testvm"
 Notice:       Setting VM CPUs to "2"
 Notice:       Setting VM RAM to "4096"
 Notice:       Setting VM size to "20G"
 Notice:       Setting OS version to "24.04"
 Notice:       Setting VM boot type to "uefi"
 Notice:       Setting VM vm_graphics to "none"
-Notice:       Setting VM hostname to "chausie"
+Notice:       Setting VM hostname to "testvm"
 Notice:       Setting VM network type to "bridge"
 Notice:       Setting VM bridge to "br0"
 Notice:       Setting VM network driver/bus to "virtio"
 Notice:       Setting VM network device to "enp1s0"
-Notice:       Setting VM CIDR to "22"
+Notice:       Setting VM CIDR to "24"
 Notice:       Setting VM DNS server to "8.8.8.8"
 Notice:       Setting Cloud Image file to "ubuntu-24.04-server-cloudimg-amd64.img"
 Notice:       Setting Cloud Image URL to "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
 Notice:       Setting libvirt directory to "/var/lib/libvirt"
 Notice:       Setting Image directory to "/var/lib/libvirt/images"
-Notice:       Setting VM disk to "/var/lib/libvirt/images/test/test.qcow2"
-Notice:       Setting pool name to "test"
-Notice:       Setting pool directory to "/var/lib/libvirt/images/test"
+Notice:       Setting VM disk to "/var/lib/libvirt/images/testvm/testvm.qcow2"
+Notice:       Setting VM cdrom to "/var/lib/libvirt/images/testvm/testvm.cloud.img"
+Notice:       Setting VM network config file to "/var/lib/libvirt/images/testvm/testvm.network.cfg"
+Notice:       Setting VM cloud-init file to "/var/lib/libvirt/images/testvm/testvm.cloud.cfg"
+Notice:       Setting VM packages "/var/lib/libvirt/images/testvm/testvm.cloud.cfg"
+Notice:       Setting pool name to "testvm"
+Notice:       Setting pool directory to "/var/lib/libvirt/images/testvm"
 Notice:       Setting release directory to "/var/lib/libvirt/images/releases"
 Notice:       Setting VM OS variant to "ubuntu24.04"
-Notice:       Setting post install script to "/home/localuser/Code/chausie/scripts/post_install.sh"
-Notice:       Setting cache directory to "/home/localuser/.cache/virt-manager"
-Notice:       Setting username to "ubuntu"
-Notice:       Setting password to "ubuntu"
+Notice:       Setting post install script to "/home/sysadmin/Code/chausie/scripts/post_install.sh"
+Notice:       Setting VM power state to "reboot"
+Notice:       Setting cache directory to "/home/sysadmin/.cache/virt-manager"
+Notice:       Setting username to "cloudadmin"
+Notice:       Setting password to "cloudadmin"
 Notice:       Setting user ID to "1000"
-Notice:       Setting group to "ubuntu"
+Notice:       Setting group to "cloudadmin"
+Notice:       Setting GECOS field to "CloudAdmin"
 Notice:       Setting group ID to "1000"
-Notice:       Setting home directory to "/home/ubuntu"
+Notice:       Setting home directory to "/home/cloudadmin"
+Notice:       Setting groups to "users"
+Notice:       Setting shell to "/usr/bin/bash"
 Notice:       Setting sudoers entry to "ALL=(ALL) NOPASSWD:ALL"
-Notice:       Setting SSH key to "/home/localuser/.ssh/id_ed25519.pub"
-Notice:       Setting network to static
-Notice:       Seting IP to 192.168.11.101
-Notice:       Seting CIDR to 22
-Notice:       Seting gateway to 192.168.11.254
-Notice:       Seting DNS server to 8.8.8.8
+Notice:       Setting SSH key to "/home/sysadmin/.ssh/id_ed25519.pub"
+Notice:       Setting network to DHCP
 Notice:       Directory "/var/lib/libvirt/images/releases" already exists
-Executing:    sudo sh -c "virsh shutdown test"
+Notice:       Directory "/var/lib/libvirt/images/releases" already exists
+Notice:       Cloud Image "/var/lib/libvirt/images/releases/ubuntu-24.04-server-cloudimg-amd64.img" already exists
+Information:  Checking config
+Executing:    sudo sh -c "mkdir -p /var/lib/libvirt"
+Executing:    sudo sh -c 'usermod -a -G libvirt-qemu sysadmin'
+Executing:    sudo sh -c "mkdir -p /var/lib/libvirt/images/testvm"
+Executing:    sudo sh -c 'chown root:libvirt-qemu /var/lib/libvirt/images/testvm'
+Executing:    sudo sh -c 'chmod 775 /var/lib/libvirt/images/testvm'
+Executing:    virsh pool-create-as --name testvm --type dir --target /var/lib/libvirt/images/testvm > /dev/null 2>&1
+Executing:    sudo sh -c 'chown root:libvirt-qemu /var/lib/libvirt/images/testvm'
+Executing:    sudo sh -c 'chmod 775 /var/lib/libvirt/images/testvm'
+Information:  Found Cloud Image file "/var/lib/libvirt/images/releases/ubuntu-24.04-server-cloudimg-amd64.img"
+Information:  Creating VM disk file "/var/lib/libvirt/images/testvm/testvm.qcow2"
+Executing:    sudo sh -c "qemu-img create -b /var/lib/libvirt/images/releases/ubuntu-24.04-server-cloudimg-amd64.img -F qcow2 -f qcow2 /var/lib/libvirt/images/testvm/testvm.qcow2 20G"
+Executing:    sudo sh -c 'chown root:libvirt-qemu /var/lib/libvirt/images/testvm/testvm.qcow2'
+Executing:    sudo sh -c 'chmod 775 /var/lib/libvirt/images/testvm/testvm.qcow2'
 Information:  Contents of file "/tmp/01-netcfg.yaml"
-network
-  ethernets:
-    enp1s0:
-      dhcp4: false
-      addresses: [192.168.11.101/22]
-      nameservers: [8.8.8.8]
-    routes:
-      - to: default
-        via: 192.168.11.254
-  version: 2
-Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --upload /tmp/01-netcfg.yaml:/etc/netplan/01-netcfg.yaml"
-Executing:    sudo sh -c "virsh shutdown test"
-Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --run-command 'chown root: /etc/netplan/01-netcfg.yaml'"
-Executing:    sudo sh -c "virsh shutdown test"
-Executing:    sudo sh -c "virt-customize -a /var/lib/libvirt/images/test/test.qcow2 --run-command 'chmod 600 /etc/netplan/01-netcfg.yaml'"
+ethernets:
+  enp1s0:
+    dhcp4: true
+version: 2
+Executing:    sudo sh -c "cp /tmp/01-netcfg.yaml /var/lib/libvirt/images/testvm/testvm.network.cfg"
+Information:  Contents of file "/tmp/cloud-init.cfg"
+#cloud-config
+hostname: testvm
+groups:
+  - cloudadmin: cloudadmin
+users:
+  - default
+  - name: cloudadmin
+    gecos: CloudAdmin
+    primary_group: cloudadmin
+    groups: users
+    shell: /usr/bin/bash
+    passwd: "$6$hIGg7DqPr8xhla8H$j34C9ChJANPo2FC82n8kglv.iVF.A9VExTk0yR7gUZanSLwawj2GcsmWn6Tr9pd0usyZylFt0yxTt8.KZScQ/1"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+packages:
+  - ansible
+growpart:
+  mode: auto
+  devices: ['/']
+power_state:
+  mode: reboot
+Executing:    sudo sh -c "cp /tmp/cloud-init.cfg /var/lib/libvirt/images/testvm/testvm.cloud.cfg"
+Executing:    sudo sh -c "cloud-localds --network-config /var/lib/libvirt/images/testvm/testvm.network.cfg /var/lib/libvirt/images/testvm/testvm.cloud.img /var/lib/libvirt/images/testvm/testvm.cloud.cfg"
+Executing:    sudo sh -c "virt-install --import --name testvm --memory 4096 --vcpus 2 --cpu host --disk /var/lib/libvirt/images/testvm/testvm.qcow2,format=qcow2,bus=virtio --disk /var/lib/libvirt/images/testvm/testvm.cloud.img,device=cdrom --network bridge=br0,model=virtio --os-variant ubuntu24.04 --noautoconsole --graphics none --boot uefi  --noreboot"
 ```
 
 Detailed Usage
