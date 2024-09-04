@@ -87,6 +87,19 @@ This script is also able do updates to images using virt-customize to bootstrap 
 (e.g. configure network, and SSH keys) if needed, and then use my existing ansible workflow
 to finish configuring the VM rather than using cloud-init.
 
+The script also support hardware pass-through, making it slighty easier to configure that 
+(you still need to the host side and inside the VM) with the --hostdevice switch which
+you can pass the host PCI ID to, e.g.
+
+```
+./chausie.sh --action createvm --hostdevice 04:00.0
+```
+
+If you want more information on the system and software side of this you can look at the
+example documentation I created for Nvidia GPU pass-through here:
+
+https://github.com/lateralblast/kvm-nvidia-passthrough
+
 Usage
 -----
 
