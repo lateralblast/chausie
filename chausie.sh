@@ -901,6 +901,9 @@ reset_defaults () {
     set -u
   fi
   verbose_message "Enabling strict mode" "notice"
+  if [ "$do_dryrun" = "true" ]
+    verbose_message "Enabling dryrun mode" "notice"
+  fi
   if [ "$vm_arch" = "" ]; then
     vm_arch="$os_arch"
   fi
