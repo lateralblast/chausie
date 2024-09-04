@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.3
+# Version:      0.6.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -231,6 +231,8 @@ set_defaults () {
   vm_file_owner=""
   vm_file_group=""
   vm_packages=""
+  vm_machine=""
+  vm_host_device=""
   source_file=""
   dest_file=""
   post_script=""
@@ -494,12 +496,22 @@ create_vm () {
     cli_network="--network $vm_net_type=$vm_bridge,model=virtio"
   fi
   cli_osvariant="--os-variant $vm_osvariant"
+  if [ "$vm_host_device" = "" ]; then
+    cli_hostdevice=""
+  else
+    cli_hostdevice="--host-device $vm_host_device"
+  fi
+  if [ "$vm_features" = "" ]; then
+    cli_features=""
+  else
+    cli_features="--features $vm_features"
+  fi
   cli_graphics="--graphics $vm_graphics"
   cli_boot="--boot $vm_boot"
   if [ "$do_reboot" = "false" ]; then
     cli_reboot="--noreboot"
   fi
-  command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osvariant $cli_autoconsole $cli_graphics $cli_boot $cli_autostart $cli_reboot"
+  command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osvariant $cli_autoconsole $cli_graphics $cli_boot $cli_autostart $cli_reboot $cli_hostdevice $cli_features"
   vm_check=$( virsh list --all |grep -c "$vm_name" )
   if [ "$vm_check" = "0" ]; then
     execute_command "$command" "linuxsu"
@@ -963,6 +975,13 @@ reset_defaults () {
     vm_dns="8.8.8.8"
   fi
   verbose_message "Setting VM DNS server to \"$vm_dns\"" "notice"
+  if [ ! "$vm_host_device" = "" ]; then
+    vm_features="kvm_hidden=on"
+    verbose_message "Setting VM features to \"$vm_features\"" "notice"
+  fi
+  if [ ! "$vm_machine" = "" ]; then
+    verbose_message "Setting VM machine type to \"$vm_machine\"" "notice"
+  fi
   if [ "$image_file" = "" ]; then
     image_file="ubuntu-$os_vers-server-cloudimg-$os_arch.img"
   fi
@@ -1460,6 +1479,12 @@ while test $# -gt 0; do
       do_dryrun="true"
       shift
       ;;
+    --features)           # switch
+      # VM features
+      check_value "$1" "$2"
+      vm_features="$2"
+      shift 2
+      ;;
     --filegroup)          # switch
       # Set group of a file within VM image
       check_value "$1" "$2"
@@ -1541,6 +1566,12 @@ while test $# -gt 0; do
       # Home directory
       check_value "$1" "$2"
       vm_home_dir="$2"
+      shift 2
+      ;;
+    --hostdevice)         # switch
+      # VM host device pass-through
+      check_value "$1" "$2"
+      vm_host_device="$2"
       shift 2
       ;;
     --hostname)           # switch
