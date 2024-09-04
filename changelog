@@ -116,3 +116,5 @@
 # Bug fixes for DHCP
 # 0.5.8: Wed  4 Sep 2024 13:08:41 AEST
 # Bug fixes for VM check
+# 0.5.9: Wed Sep  4 01:26:49 PM AEST 2024
+# Updated crypt command for Linux

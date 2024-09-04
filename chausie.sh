@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.8
+# Version:      0.5.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -681,7 +681,11 @@ print_contents () {
 
 generate_crypt () {
   if [ "$vm_crypt" = "" ]; then
-    vm_crypt=$( echo -n "$vm_password" |openssl sha512 | awk '{ print $2 }' )
+    if [ "$os_name" = "Darwin" ]; then
+      vm_crypt=$( echo -n "$vm_password" |openssl sha512 | awk '{ print $2 }' )
+    else
+      vm_crypt=$( echo "$vm_password" |mkpasswd --method=SHA-512 --stdin )
+    fi
   fi
 }
 
@@ -989,7 +993,7 @@ reset_defaults () {
     fi
     verbose_message "Setting VM network config file to \"$vm_net_cfg\"" "notice"
     if [ "$vm_init_cfg" = "" ]; then
-      vm_init_cfg="$image_dir/$vm_name/$vm_name.network.cfg"
+      vm_init_cfg="$image_dir/$vm_name/$vm_name.cloud.cfg"
     fi
     verbose_message "Setting VM cloud-init file to \"$vm_init_cfg\"" "notice"
   fi
