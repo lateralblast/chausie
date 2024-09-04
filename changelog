@@ -110,3 +110,5 @@
 # Added code to update DNS resolution
 # 0.5.5: Wed  4 Sep 2024 12:19:53 AEST
 # Added initial cloud-init support and ran script through shellcheck
+# 0.5.6: Wed  4 Sep 2024 12:39:14 AEST
+# More cloud-init support and bug fixes

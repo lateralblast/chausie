@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.5
+# Version:      0.5.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -464,7 +464,7 @@ create_vm () {
   fix_libvirt_perms "$vm_disk"
   if [ "$do_localds" = "true" ]; then
     configure_network
-    cofiigure_init
+    configure_init
     execute_command "cloud-localds --network-config $vm_net_cfg $vm_cdrom $vm_init_cfg" "linuxsu"
   fi
   if [ "$do_autoconsole" = "false" ]; then
@@ -503,6 +503,9 @@ create_vm () {
     execute_command "$command" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" already exists" "notice"
+  fi
+  if [ "$do_localds" = "false" ]; then
+    create_keys
   fi
 }
 
@@ -975,10 +978,20 @@ reset_defaults () {
     vm_disk="$image_dir/$vm_name/$vm_name.qcow2"
   fi
   verbose_message "Setting VM disk to \"$vm_disk\"" "notice"
-  if [ "$vm_cdrom" = "" ]; then
-    vm_cdrom="$image_dir/$vm_name/$vm_name.cloud.img"
+  if [ "$do_localds" = "true" ]; then
+    if [ "$vm_cdrom" = "" ]; then
+      vm_cdrom="$image_dir/$vm_name/$vm_name.cloud.img"
+    fi
+    verbose_message "Setting VM cdrom to \"$vm_cdrom\"" "notice"
+    if [ "$vm_net_cfg" = "" ]; then
+      vm_net_cfg="$image_dir/$vm_name/$vm_name.network.cfg"
+    fi
+    verbose_message "Setting VM network config file to \"$vm_net_cfg\"" "notice"
+    if [ "$vm_init_cfg" = "" ]; then
+      vm_init_cfg="$image_dir/$vm_name/$vm_name.network.cfg"
+    fi
+    verbose_message "Setting VM cloud-init file to \"$vm_init_cfg\"" "notice"
   fi
-  verbose_message "Setting VM cdrom to \"$vm_cdrom\"" "notice"
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
   fi
@@ -1097,7 +1110,6 @@ process_actions () {
       check_config
       create_pool
       create_vm
-      create_keys
       ;;
     *network*)        # action
       # Configure network
