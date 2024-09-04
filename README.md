@@ -80,13 +80,26 @@ I wrote this script as I was tired of Canonical's inconsistent cloud-init suppor
 
 I understand having some differences between physical and virtual machines, e.g.
 ISO based installs versus using Cloud Images, but when my instructions/workflow for 20.04
-and 22.04 stopped working with 24.04, I thought I'd write a script to use help handle these
-inconsistencies, but also be able to use virt-customize to bootstrap the image
+and 22.04 stopped working with 24.04, I thought I'd write a script to help handle these
+inconsistencies for cloud images. 
+
+This script is also able do updates to images using virt-customize to bootstrap the image
 (e.g. configure network, and SSH keys) if needed, and then use my existing ansible workflow
 to finish configuring the VM rather than using cloud-init.
 
 Usage
 -----
+
+The default username and password used with images is "cloudadmin"
+
+By default the script will try to create a VM using a cloud-init config.
+If you wish to create an image without cloud-init and do manual modifications
+via virt-customize (which can also be driven by the script to make it easier),
+then use the option nolocalds, e.g.
+
+```
+./chausie --action createvm --option nolocalds
+```
 
 If you want to set mulitple options, e.g. enable verbose and dryrun modes,
 ou can include both of them in after the --option switch, separated by a comma, e.g.
