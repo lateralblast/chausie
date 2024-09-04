@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.7
+# Version:      0.5.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -498,8 +498,8 @@ create_vm () {
     cli_reboot="--noreboot"
   fi
   command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osvariant $cli_autoconsole $cli_graphics $cli_boot $cli_autostart $cli_reboot"
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "0" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "0" ]; then
     execute_command "$command" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" already exists" "notice"
@@ -513,8 +513,8 @@ create_vm () {
 
 delete_vm () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ ! "$vm_check" = "0" ]; then
     stop_vm
     execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
   else
@@ -527,8 +527,8 @@ delete_vm () {
 start_vm () {
   check_vm_name
   command="virsh start $vm_name"
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ ! "$vm_check" = "0" ]; then
     execute_command "$command" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -540,8 +540,8 @@ start_vm () {
 stop_vm () {
   check_vm_name
   command="virsh shutdown $vm_name"
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ ! "$vm_check" = "0" ]; then
     execute_command "$command" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -553,8 +553,8 @@ stop_vm () {
 connect_to_vm () {
   check_vm_name
   command="virsh console $vm_name"
-  vm_check=$(virsh list --all |grep -c "$vm_name" )2
-  if [[ "$vm_check" = "1" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ ! "$vm_check" = "0" ]; then
     execute_command "$command" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -576,8 +576,8 @@ ssh_to_vm () {
 
 inject_key () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "1" ]; then
     stop_vm
     if [ -f "$ssh_key" ]; then
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
@@ -597,8 +597,8 @@ inject_key () {
 
 upload_file () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "1" ] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$source_file" ]; then
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
         execute_command "virt-customize -a $vm_disk --upload $source_file:$dest_file" "linuxsu"
@@ -629,8 +629,8 @@ upload_file () {
 
 run_command () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "1" ] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
       stop_vm
       execute_command "virt-customize -a $vm_disk --run-command '$vm_command'" "linuxsu"
@@ -652,8 +652,8 @@ set_password () {
 
 customize_vm () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "1" ] || [ "$do_dryrun" = "true" ]; then
     stop_vm
     if [ -f "$post_script" ] || [ "$do_dryrun" = "true" ]; then
       execute_command "virt-customize " "linuxsu"
@@ -723,8 +723,8 @@ configure_network () {
   check_vm_name
   temp_file="/tmp/01-netcfg.yaml"
   if [ "$do_localds" = "false" ]; then
-    vm_check=$(virsh list --all |grep -c "$vm_name" )
-    if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+    vm_check=$( virsh list --all |grep -c "$vm_name" )
+    if [ "$vm_check" = "1" ] || [ "$do_dryrun" = "true" ]; then
       stop_vm
       echo "network:"                                > "$temp_file"
       echo "  ethernets:"                           >> "$temp_file"
@@ -791,8 +791,8 @@ set_hostname () {
 
 install_packages () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c "$vm_name" )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+  vm_check=$( virsh list --all |grep -c "$vm_name" )
+  if [ "$vm_check" = "1" ] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
       execute_command "virt-customize -a $vm_disk --install '$vm_packages'" "linuxsu"
     else
