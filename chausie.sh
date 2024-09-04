@@ -1264,7 +1264,7 @@ process_options () {
       # Enable autostart
       do_autostart="true"
       ;;
-    nolocalds)     # option
+    nolocalds)      # option
       # Don't use cloud-localds
       do_localds="false"
       ;;
@@ -1514,7 +1514,7 @@ while test $# -gt 0; do
       vm_groupname="$2"
       shift 2
       ;;
-    --groups)  # switch
+    --groups)             # switch
       # Additional groups a user is a member of in VM image
       check_value "$1" "$2"
       vm_groups="$2"
@@ -1592,7 +1592,7 @@ while test $# -gt 0; do
       vm_net_dev="$2"
       shift 2
       ;;
-    --option)            # switch
+    --option)             # switch
       # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
       options="$2"

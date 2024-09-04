@@ -326,6 +326,7 @@ Standard help:
 
 ```
 ./chausie.sh --help
+ ✔  1121  14:58:46
 Usage: chausie.sh [OPTIONS...]
 -----
  --action)
@@ -338,14 +339,20 @@ Usage: chausie.sh [OPTIONS...]
    VM boot type (e.g. UEFI)
  --bridge)
    VM network bridge
+ --cdrom)
+   VM localds cdrom
  --checkconfig)
    Check config
  --cidr)
    VM CIDR
+ --cloud*)
+   VM cloud-init config
  --cpus)
    Number of VM CPUs
  --cputype)
    Type of CPU within VM
+ --crypt)
+   VM password crypt
  --debug)
    Run in debug mode
  --dest*)
@@ -357,7 +364,7 @@ Usage: chausie.sh [OPTIONS...]
  --domain*)
    VM domainname
  --dryrun)
-   Run in dryrun mode (don't execute commands)
+   Run in dryrun mode
  --filegroup)
    Set group of a file within VM image
  --fileowner)
@@ -379,7 +386,9 @@ Usage: chausie.sh [OPTIONS...]
  --groupid|--gid)
    Group ID
  --group|--groupname)
-   Group
+   Primary Group a user is member of in VM image
+ --groups)
+   Additional groups a user is a member of in VM image
  --help|--usage|-h)
    Print help
  --home*)
@@ -400,10 +409,12 @@ Usage: chausie.sh [OPTIONS...]
    Net type (e.g. bridge)
  --netbus|netdriver)
    Net bus/driver (e.g. virtio)
+ --netc*|--networkc*)
+   VM network config file
  --netdev|--nic)
    VM network device (e.g. enp1s0)
  --option)
-   Options (e.g. verbose,dryrun)
+   Option(s) (e.g. verbose,dryrun)
  --options)
    Print available options
  --osvariant)
@@ -420,8 +431,12 @@ Usage: chausie.sh [OPTIONS...]
    Pool directory
  --post*)
    Post install script
+ --power*)
+   VM power state
  --ram)
    Amount of VM RAM
+ --shell)
+   User shell in VM image
  --size)
    Size of VM disk
  --shellcheck)
@@ -450,6 +465,7 @@ Options help:
 
 ```
 ./chausie.sh --help options
+ 1 ↵  1122  14:59:15
 Options:
 -------
  debug)
@@ -468,6 +484,14 @@ Options:
    Disable autostart
  autostart)
    Enable autostart
+ nolocalds)
+   Don't use cloud-localds
+ localds)
+   Use cloud-localds
+ nolock*)
+   Lock password
+ lock*)
+   Lock password
  nobacking)
    Don't use backing (creates a full copy of image)
  options|help)
