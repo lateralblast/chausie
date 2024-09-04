@@ -120,3 +120,5 @@
 # Updated crypt command for Linux
 # 0.6.0: Wed  4 Sep 2024 13:34:31 AEST
 # Added code to set GECOS field if not set
+# 0.6.1: Wed  4 Sep 2024 13:53:53 AEST
+# Fixes for cloud-init package list

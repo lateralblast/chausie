@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.0
+# Version:      0.6.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -229,6 +229,7 @@ set_defaults () {
   vm_file_perms=""
   vm_file_owner=""
   vm_file_group=""
+  vm_packages=""
   source_file=""
   dest_file=""
   post_script=""
@@ -709,9 +710,14 @@ configure_init () {
   echo "    sudo: $vm_sudoers"            >> "$temp_file"
   echo "    lock_passwd: $vm_lock"        >> "$temp_file"
   echo "packages:"                        >> "$temp_file"
-  for vm_package in $vm_packages; do
-    echo "  - $vm_package"                >> "$temp_file"
-  done
+  if [[ "$vm_packages" =~ "," ]]; then
+    IFS="," read -r -a array <<< "$vm_packages"
+    for vm_package in "${array[@]}"; do
+      echo "  - $vm_package"              >> "$temp_file"
+    done
+  else
+    echo "  - $vm_packages"               >> "$temp_file"
+  fi
   echo "growpart:"                        >> "$temp_file"
   echo "  mode: auto"                     >> "$temp_file"
   echo "  devices: ['/']"                 >> "$temp_file"
@@ -996,6 +1002,10 @@ reset_defaults () {
       vm_init_cfg="$image_dir/$vm_name/$vm_name.cloud.cfg"
     fi
     verbose_message "Setting VM cloud-init file to \"$vm_init_cfg\"" "notice"
+    if [ "$vm_packages" = "" ]; then
+      vm_packages="ansible"
+    fi
+    verbose_message "Setting VM packages \"$vm_init_cfg\"" "notice"
   fi
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
