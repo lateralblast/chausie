@@ -112,3 +112,5 @@
 # Added initial cloud-init support and ran script through shellcheck
 # 0.5.6: Wed  4 Sep 2024 12:39:14 AEST
 # More cloud-init support and bug fixes
+# 0.5.7: Wed  4 Sep 2024 12:54:19 AEST
+# Bug fixes for DHCP

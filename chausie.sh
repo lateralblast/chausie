@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.6
+# Version:      0.5.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -515,6 +515,7 @@ delete_vm () {
   check_vm_name
   vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]]; then
+    stop_vm
     execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
   else
     verbose_message "VM \"$vm_name\" does not exist" "notice"
@@ -1064,16 +1065,15 @@ reset_defaults () {
     ssh_key=$( find "$os_home/.ssh" -name "*.pub" |head -1 )
   fi
   verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
-  if [ "$vm_ip" = "dhcp" ]; then
+  if [ "$vm_ip" = "dhcp" ] || [ "$vm_ip" = "" ]; then
+    vm_dhcp="true"
     verbose_message "Setting network to DHCP" "notice"
   else
-    if [ ! "$vm_ip" = "" ]; then
-      verbose_message "Setting network to static"     "notice"
-      verbose_message "Seting IP to $vm_ip"           "notice"
-      verbose_message "Seting CIDR to $vm_cidr"       "notice"
-      verbose_message "Seting gateway to $vm_gateway" "notice"
-      verbose_message "Seting DNS server to $vm_dns"  "notice"
-    fi
+    verbose_message "Setting network to static"     "notice"
+    verbose_message "Seting IP to $vm_ip"           "notice"
+    verbose_message "Seting CIDR to $vm_cidr"       "notice"
+    verbose_message "Seting gateway to $vm_gateway" "notice"
+    verbose_message "Seting DNS server to $vm_dns"  "notice"
   fi
   create_libvirt_dir "$release_dir"
 }
