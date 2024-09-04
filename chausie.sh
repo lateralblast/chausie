@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.1
+# Version:      0.6.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1039,12 +1039,12 @@ reset_defaults () {
     if [[ "$actions" =~ "password" ]]; then
       vm_username="root"
     else
-      vm_username="ubuntu"
+      vm_username="cloudadmin"
     fi
   fi
   verbose_message "Setting username to \"$vm_username\"" "notice"
   if [ "$vm_password" = "" ]; then
-    vm_password="ubuntu"
+    vm_password="cloudadmin"
   fi
   verbose_message "Setting password to \"$vm_password\"" "notice"
   if [ "$vm_userid" = "" ]; then
@@ -1052,11 +1052,11 @@ reset_defaults () {
   fi
   verbose_message "Setting user ID to \"$vm_userid\"" "notice"
   if [ "$vm_groupname" = "" ]; then
-    vm_groupname="ubuntu"
+    vm_groupname="cloudadmin"
   fi
   verbose_message "Setting group to \"$vm_groupname\"" "notice"
   if [ "$vm_gecos" = "" ]; then
-    vm_gecos="ubuntu"
+    vm_gecos="CloudAdmin"
   fi
   verbose_message "Setting GECOS field to \"$vm_gecos\"" "notice"
   if [ "$vm_groupid" = "" ]; then
@@ -1068,7 +1068,7 @@ reset_defaults () {
   fi
   verbose_message "Setting home directory to \"$vm_home_dir\"" "notice"
   if [ "$vm_groups" = "" ]; then
-    vm_groups="user"
+    vm_groups="users"
   fi
   verbose_message "Setting groups to \"$vm_groups\"" "notice"
   if [ "$vm_shell" = "" ]; then
