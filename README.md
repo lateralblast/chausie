@@ -326,7 +326,6 @@ Standard help:
 
 ```
 ./chausie.sh --help
- ✔  1121  14:58:46
 Usage: chausie.sh [OPTIONS...]
 -----
  --action)
@@ -445,6 +444,8 @@ Usage: chausie.sh [OPTIONS...]
    Source file to copy into VM disk
  --sshkey)
    SSH key
+ --sshkeyfile)
+   SSH key file
  --strict)
    Run in strict mode
  --sudoers)
@@ -465,7 +466,6 @@ Options help:
 
 ```
 ./chausie.sh --help options
- 1 ↵  1122  14:59:15
 Options:
 -------
  debug)
