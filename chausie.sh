@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.2
+# Version:      0.6.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -176,6 +176,7 @@ set_defaults () {
   pool_dir=""
   release_dir=""
   ssh_key=""
+  ssh_key_file=""
   do_actions="false"
   do_options="false"
   do_verbose="false"
@@ -580,14 +581,14 @@ inject_key () {
   vm_check=$( virsh list --all |grep -c "$vm_name" )
   if [ "$vm_check" = "1" ]; then
     stop_vm
-    if [ -f "$ssh_key" ]; then
+    if [ -f "$ssh_key_file" ]; then
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
-        execute_command "virt-customize -a $vm_disk --ssh-inject $vm_username:file:$ssh_key" "linuxsu"
+        execute_command "virt-customize -a $vm_disk --ssh-inject $vm_username:file:$ssh_key_file" "linuxsu"
       else
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
       fi
     else
-      verbose_message "SSH key file \"$ssh_key\" does not exist" "warn"
+      verbose_message "SSH key file \"$ssh_key_file\" does not exist" "warn"
     fi
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -707,6 +708,10 @@ configure_init () {
   echo "    groups: $vm_groups"           >> "$temp_file"
   echo "    shell: $vm_shell"             >> "$temp_file"
   echo "    passwd: \"$vm_crypt\""        >> "$temp_file"
+  if [ ! "$ssh_key" = "" ]; then
+    echo "    ssh-authorized-keys:"       >> "$temp_file"
+    echo "      - \"$ssh_key\""           >> "$temp_file"
+  fi
   echo "    sudo: $vm_sudoers"            >> "$temp_file"
   echo "    lock_passwd: $vm_lock"        >> "$temp_file"
   echo "packages:"                        >> "$temp_file"
@@ -1079,8 +1084,14 @@ reset_defaults () {
     vm_sudoers="ALL=(ALL) NOPASSWD:ALL"
   fi
   verbose_message "Setting sudoers entry to \"$vm_sudoers\"" "notice"
+  if [ "$ssh_key_file" = "" ]; then
+    ssh_key_file=$( find "$os_home/.ssh" -name "*.pub" |head -1 )
+  fi
+  verbose_message "Setting SSH key file to \"$ssh_key_file\"" "notice"
   if [ "$ssh_key" = "" ]; then
-    ssh_key=$( find "$os_home/.ssh" -name "*.pub" |head -1 )
+    if [ ! "$ssh_key_file" = "" ]; then
+      ssh_key=$( cat "$ssh_key_file" )
+    fi
   fi
   verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
   if [ "$vm_ip" = "dhcp" ] || [ "$vm_ip" = "" ]; then
@@ -1692,6 +1703,12 @@ while test $# -gt 0; do
       # SSH key
       check_value "$1" "$2"
       ssh_key="$2"
+      shift 2
+      ;;
+    --sshkeyfile)             # switch
+      # SSH key file
+      check_value "$1" "$2"
+      ssh_key_file="$2"
       shift 2
       ;;
     --strict)             # switch

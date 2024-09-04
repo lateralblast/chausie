@@ -124,3 +124,5 @@
 # Fixes for cloud-init package list
 # 0.6.2: Wed  4 Sep 2024 14:16:43 AEST
 # Updated default user
+# 0.6.3: Wed  4 Sep 2024 15:52:59 AEST
+# Added code to add ssh key entry to cloud-init config
