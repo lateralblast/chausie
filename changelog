@@ -118,3 +118,5 @@
 # Bug fixes for VM check
 # 0.5.9: Wed Sep  4 01:26:49 PM AEST 2024
 # Updated crypt command for Linux
+# 0.6.0: Wed  4 Sep 2024 13:34:31 AEST
+# Added code to set GECOS field if not set

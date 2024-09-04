@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.9
+# Version:      0.6.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1045,6 +1045,10 @@ reset_defaults () {
     vm_groupname="ubuntu"
   fi
   verbose_message "Setting group to \"$vm_groupname\"" "notice"
+  if [ "$vm_gecos" = "" ]; then
+    vm_gecos="ubuntu"
+  fi
+  verbose_message "Setting GECOS field to \"$vm_gecos\"" "notice"
   if [ "$vm_groupid" = "" ]; then
     vm_groupid="1000"
   fi
