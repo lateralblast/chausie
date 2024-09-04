@@ -755,7 +755,7 @@ configure_network () {
       verbose_message "VM \"$vm_name\" does not exist" "warn"
     fi
    else
-     echo "ethernets:"                           >> "$temp_file"
+     echo "ethernets:"                            > "$temp_file"
      echo "  $vm_net_dev:"                       >> "$temp_file"
      echo "    dhcp4: $vm_dhcp"                  >> "$temp_file"
      if [ "$vm_dhcp" = "false" ]; then
