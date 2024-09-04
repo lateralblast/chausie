@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.5.4
+# Version:      0.5.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -15,6 +15,7 @@
 
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
+# shellcheck disable=SC2129
 
 # Set/get some environment parameters
 
@@ -187,7 +188,9 @@ set_defaults () {
   do_autoconsole="false"
   do_autostart="false"
   do_reboot="false"
+  do_localds="true"
   vm_dhcp="false"
+  vm_lock="false"
   vm_cpus=""
   vm_ram=""
   vm_size=""
@@ -205,6 +208,9 @@ set_defaults () {
   vm_net_type=""
   vm_net_bus=""
   vm_net_dev=""
+  vm_net_cfg=""
+  vm_init_cfg=""
+  vm_cdrom=""
   vm_cidr=""
   vm_dns=""
   vm_ip=""
@@ -216,6 +222,8 @@ set_defaults () {
   vm_domain=""
   vm_fqdn=""
   vm_gecos=""
+  vm_crypt=""
+  vm_power=""
   vm_home_dir=""
   vm_sudoers=""
   vm_file_perms=""
@@ -226,13 +234,14 @@ set_defaults () {
   post_script=""
   cache_dir=""
   virt_dir=""
+  libvirt_groups="kvm libvirt libvirt-qemu"
   if [ "$os_name" = "Darwin" ]; then
     installed_packages=$( brew list )
     required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo"
   else
     vm_bridge="br0"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
-    required_packages="virt-manager libosinfo-bin libguestfs-tools"
+    required_packages="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils"
   fi
   image_dir=""
 }
@@ -318,7 +327,7 @@ check_config () {
     if [ ! "$perms_check" = "775" ]; then
       execute_command "chmod -R 775 $image_dir" "su"
     fi
-    for group in kvm libvirt libvirt-qemu; do
+    for group in $libvirt_groups; do
       group_check=$( groups |grep -c "$group " )
       if [ "$group_check" = "0" ]; then
         execute_command "usermod -a -G $group $os_user" "su"
@@ -380,7 +389,7 @@ get_image () {
 create_pool () {
   create_libvirt_dir "$pool_dir"
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
-  if [[ ! "$pool_test" =~ "$pool_name" ]]; then
+  if [[ ! "$pool_test" =~ $pool_name ]]; then
     execute_command "virsh pool-create-as --name $pool_name --type dir --target $pool_dir > /dev/null 2>&1" ""
     fix_libvirt_perms "$pool_dir"
 
@@ -393,7 +402,7 @@ create_pool () {
 
 delete_pool () {
   pool_test=$( virsh pool-list |awk "{ print \$1 }" )
-  if [[ "$pool_test" =~ "$pool_name" ]]; then
+  if [[ "$pool_test" =~ $pool_name ]]; then
     execute_command "virsh pool-destroy --pool $pool_name > /dev/null 2>&1" ""
   else
     verbose_message "Pool \"$pool_name\" does not exist" "notice"
@@ -439,7 +448,7 @@ create_disk () {
   if [ "$do_backing" = "true" ]; then
     execute_command "qemu-img create -b $release_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
   else
-    execute_command "cp $release__dir/$image_file $vm_disk" "linuxsu"
+    execute_command "cp $release_dir/$image_file $vm_disk" "linuxsu"
     execute_command "qemu-img resize $vm_disk $vm_size" "linuxsu"
   fi
 }
@@ -453,6 +462,11 @@ create_vm () {
   check_disk_exists
   create_disk
   fix_libvirt_perms "$vm_disk"
+  if [ "$do_localds" = "true" ]; then
+    configure_network
+    cofiigure_init
+    execute_command "cloud-localds --network-config $vm_net_cfg $vm_cdrom $vm_init_cfg" "linuxsu"
+  fi
   if [ "$do_autoconsole" = "false" ]; then
     cli_autoconsole="--noautoconsole"
   else
@@ -467,7 +481,11 @@ create_vm () {
   cli_memory="--memory $vm_ram"
   cli_vcpus="--vcpus $vm_cpus"
   cli_cpu="--cpu $vm_cputype"
-  cli_disk="--disk $vm_disk,format=qcow2,bus=virtio"
+  if [ "$do_localds" = "true" ]; then
+    cli_disk="--disk $vm_disk,format=qcow2,bus=virtio --disk $vm_cdrom,device=cdrom"
+  else
+    cli_disk="--disk $vm_disk,format=qcow2,bus=virtio"
+  fi
   if [ "$os_name" = "Darwin" ]; then
     cli_network=""
   else
@@ -480,7 +498,7 @@ create_vm () {
     cli_reboot="--noreboot"
   fi
   command="virt-install --import $cli_name $cli_memory $cli_vcpus $cli_cpu $cli_disk $cli_network $cli_osvariant $cli_autoconsole $cli_graphics $cli_boot $cli_autostart $cli_reboot"
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "0" ]]; then
     execute_command "$command" "linuxsu"
   else
@@ -492,7 +510,7 @@ create_vm () {
 
 delete_vm () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]]; then
     execute_command "virsh undefine --nvram $vm_name > /dev/null 2>&1" "linuxsu"
   else
@@ -505,7 +523,7 @@ delete_vm () {
 start_vm () {
   check_vm_name
   command="virsh start $vm_name"
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]]; then
     execute_command "$command" "linuxsu"
   else
@@ -518,7 +536,7 @@ start_vm () {
 stop_vm () {
   check_vm_name
   command="virsh shutdown $vm_name"
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]]; then
     execute_command "$command" "linuxsu"
   else
@@ -531,7 +549,7 @@ stop_vm () {
 connect_to_vm () {
   check_vm_name
   command="virsh console $vm_name"
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )2
   if [[ "$vm_check" = "1" ]]; then
     execute_command "$command" "linuxsu"
   else
@@ -539,9 +557,22 @@ connect_to_vm () {
   fi
 }
 
+# SSH to vm
+
+ssh_to_vm () {
+  if [ "$vm_ip" = "" ]; then
+    verbose_message "No IP given to SSH to" "warn"
+    do_exit
+  else
+    execute_command "ssh -oStrictHostKeyChecking=no $vm_username@$vm_ip"
+  fi
+}
+
+# Inject SSH key
+
 inject_key () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]]; then
     stop_vm
     if [ -f "$ssh_key" ]; then
@@ -562,7 +593,7 @@ inject_key () {
 
 upload_file () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$source_file" ]; then
       if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
@@ -594,7 +625,7 @@ upload_file () {
 
 run_command () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
       stop_vm
@@ -617,7 +648,7 @@ set_password () {
 
 customize_vm () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     stop_vm
     if [ -f "$post_script" ] || [ "$do_dryrun" = "true" ]; then
@@ -642,44 +673,102 @@ print_contents () {
   fi
 }
 
+# Generate password crypt/hash
+
+generate_crypt () {
+  if [ "$vm_crypt" = "" ]; then
+    vm_crypt=$( echo -n "$vm_password" |openssl sha512 | awk '{ print $2 }' )
+  fi
+}
+
+# Configure cloud-init config file
+
+configure_init () {
+  temp_file="/tmp/cloud-init.cfg"
+  generate_crypt
+  echo "#cloud-config"                     > "$temp_file"
+  echo "hostname: $vm_hostname"           >> "$temp_file"
+  echo "groups:"                          >> "$temp_file"
+  echo "  - $vm_groupname: $vm_username"  >> "$temp_file"
+  echo "users:"                           >> "$temp_file"
+  echo "  - default"                      >> "$temp_file"
+  echo "  - name: $vm_username"           >> "$temp_file"
+  echo "    gecos: $vm_gecos"             >> "$temp_file"
+  echo "    primary_group: $vm_groupname" >> "$temp_file"
+  echo "    groups: $vm_groups"           >> "$temp_file"
+  echo "    shell: $vm_shell"             >> "$temp_file"
+  echo "    passwd: \"$vm_crypt\""        >> "$temp_file"
+  echo "    sudo: $vm_sudoers"            >> "$temp_file"
+  echo "    lock_passwd: $vm_lock"        >> "$temp_file"
+  echo "packages:"                        >> "$temp_file"
+  for vm_package in $vm_packages; do
+    echo "  - $vm_package"                >> "$temp_file"
+  done
+  echo "growpart:"                        >> "$temp_file"
+  echo "  mode: auto"                     >> "$temp_file"
+  echo "  devices: ['/']"                 >> "$temp_file"
+  echo "power_state:"                     >> "$temp_file"
+  echo "  mode: $vm_power"                >> "$temp_file"
+  print_contents "$temp_file"
+  execute_command "cp $temp_file $vm_init_cfg" "linuxsu"
+}
+
 # Configure network
 
 configure_network () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
-  if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
-    stop_vm
-    temp_file="/tmp/01-netcfg.yaml"
-    echo "network:"                                > "$temp_file"
-    echo "  ethernets:"                           >> "$temp_file"
-    echo "    $vm_net_dev:"                       >> "$temp_file"
-    echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
-    if [ "$vm_dhcp" = "false" ]; then
-      echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
-      echo "      nameservers:"                   >> "$temp_file"
-      echo "        addresses: [$vm_dns]"         >> "$temp_file"
-      echo "      routes:"                        >> "$temp_file"
-      echo "      - to: default"                  >> "$temp_file"
-      echo "        via: $vm_gateway"             >> "$temp_file"
+  temp_file="/tmp/01-netcfg.yaml"
+  if [ "$do_localds" = "false" ]; then
+    vm_check=$(virsh list --all |grep -c "$vm_name" )
+    if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
+      stop_vm
+      echo "network:"                                > "$temp_file"
+      echo "  ethernets:"                           >> "$temp_file"
+      echo "    $vm_net_dev:"                       >> "$temp_file"
+      echo "      dhcp4: $vm_dhcp"                  >> "$temp_file"
+      if [ "$vm_dhcp" = "false" ]; then
+        echo "      addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
+        echo "      nameservers:"                   >> "$temp_file"
+        echo "        addresses: [$vm_dns]"         >> "$temp_file"
+        echo "      routes:"                        >> "$temp_file"
+        echo "      - to: default"                  >> "$temp_file"
+        echo "        via: $vm_gateway"             >> "$temp_file"
+      fi
+      echo "  version: 2"                           >> "$temp_file"
+      source_file="$temp_file"
+      chmod 700 "$source_file"
+      print_contents "$source_file"
+      dest_file="/etc/netplan/01-netcfg.yaml"
+      vm_file_perms="600"
+      vm_file_owner="root"
+      upload_file
+      vm_command="sed -i \"s/#DNS=/DNS=$vm_dns/g\" /etc/systemd/resolved.conf"
+      run_command
+      vm_command="rm /etc/resolv.conf"
+      run_command
+      vm_command="echo \"nameserver $vm_dns\" > /etc/resolv.conf"
+      run_command
+    else
+      verbose_message "VM \"$vm_name\" does not exist" "warn"
     fi
-    echo "  version: 2"                           >> "$temp_file"
-    source_file="$temp_file"
-    touch "$source_file"
-    chmod 700 "$source_file"
-    print_contents "$source_file"
-    dest_file="/etc/netplan/01-netcfg.yaml"
-    vm_file_perms="600"
-    vm_file_owner="root"
-    upload_file
-    vm_command="sed -i \"s/#DNS=/DNS=$vm_dns/g\" /etc/systemd/resolved.conf"
-    run_command
-    vm_command="rm /etc/resolv.conf"
-    run_command
-    vm_command="echo \"nameserver $vm_dns\" > /etc/resolv.conf"
-    run_command
-  else
-    verbose_message "VM \"$vm_name\" does not exist" "warn"
-  fi
+   else
+     echo "ethernets:"                           >> "$temp_file"
+     echo "  $vm_net_dev:"                       >> "$temp_file"
+     echo "    dhcp4: $vm_dhcp"                  >> "$temp_file"
+     if [ "$vm_dhcp" = "false" ]; then
+       echo "    addresses: [$vm_ip/$vm_cidr]"   >> "$temp_file"
+       echo "    nameservers:"                   >> "$temp_file"
+       echo "      addresses: [$vm_dns]"         >> "$temp_file"
+       echo "    routes:"                        >> "$temp_file"
+       echo "    - to: default"                  >> "$temp_file"
+       echo "      via: $vm_gateway"             >> "$temp_file"
+     fi
+     echo "version: 2"                           >> "$temp_file"
+     source_file="$temp_file"
+     chmod 700 "$source_file"
+     print_contents "$source_file"
+     execute_command "cp $source_file $vm_net_cfg" "linuxsu"
+   fi
 }
 
 # Set VM hostname
@@ -698,7 +787,7 @@ set_hostname () {
 
 install_packages () {
   check_vm_name
-  vm_check=$(virsh list --all |grep -c $vm_name )
+  vm_check=$(virsh list --all |grep -c "$vm_name" )
   if [[ "$vm_check" = "1" ]] || [ "$do_dryrun" = "true" ]; then
     if [ -f "$vm_disk" ] || [ "$do_dryrun" = "true" ]; then
       execute_command "virt-customize -a $vm_disk --install '$vm_packages'" "linuxsu"
@@ -711,7 +800,7 @@ install_packages () {
 }
 
 add_group () {
-  if [ "$group_id" = "" ]; then
+  if [ "$vm_groupid" = "" ]; then
     vm_command="groupadd $vm_groupname"
   else
     vm_command="groupadd -g $vm_groupid $vm_groupname"
@@ -721,7 +810,7 @@ add_group () {
 
 add_user () {
   add_group
-  if [ "$user_id" = "" ]; then
+  if [ "$vm_userid" = "" ]; then
     vm_command="useradd -g $vm_groupname -s $vm_shell -m -d $vm_home_dir $vm_username"
   else
     vm_command="useradd -u $vm_userid -g $vm_groupname -s $vm_shell -m -d $vm_home_dir $vm_username"
@@ -886,6 +975,10 @@ reset_defaults () {
     vm_disk="$image_dir/$vm_name/$vm_name.qcow2"
   fi
   verbose_message "Setting VM disk to \"$vm_disk\"" "notice"
+  if [ "$vm_cdrom" = "" ]; then
+    vm_cdrom="$image_dir/$vm_name/$vm_name.cloud.img"
+  fi
+  verbose_message "Setting VM cdrom to \"$vm_cdrom\"" "notice"
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
   fi
@@ -906,6 +999,10 @@ reset_defaults () {
     post_script="$script_dir/scripts/post_install.sh"
   fi
   verbose_message "Setting post install script to \"$post_script\"" "notice"
+  if [ "$vm_power" = "" ]; then
+    vm_power="reboot"
+  fi
+  verbose_message "Setting VM power state to \"$vm_power\"" "notice"
   if [ "$cache_dir" = "" ]; then
     cache_dir="$os_home/.cache/virt-manager"
   fi
@@ -938,6 +1035,10 @@ reset_defaults () {
     vm_home_dir="/home/$vm_username"
   fi
   verbose_message "Setting home directory to \"$vm_home_dir\"" "notice"
+  if [ "$vm_groups" = "" ]; then
+    vm_groups="user"
+  fi
+  verbose_message "Setting groups to \"$vm_groups\"" "notice"
   if [ "$vm_shell" = "" ]; then
     vm_shell="/usr/bin/bash"
   fi
@@ -1056,6 +1157,10 @@ process_actions () {
       # Run command in VM image
       run_command
       ;;
+    ssh)
+      # SSH to VM
+      ssh_to_vm
+      ;;
     shellcheck)       # action
       # Check script with shellcheck
       do_shellcheck="true"
@@ -1128,6 +1233,22 @@ process_options () {
     autostart)      # option
       # Enable autostart
       do_autostart="true"
+      ;;
+    nolocalds)     # option
+      # Don't use cloud-localds
+      do_localds="false"
+      ;;
+    localds)        # option
+      # Use cloud-localds
+      do_localds="true"
+      ;;
+    nolock*)        # option
+      # Lock password
+      do_lock="false"
+      ;;
+    lock*)          # option
+      # Lock password
+      do_lock="true"
       ;;
     nobacking)      # option
       # Don't use backing (creates a full copy of image)
@@ -1222,6 +1343,12 @@ while test $# -gt 0; do
       vm_bridge="$2"
       shift 2
       ;;
+    --cdrom)              # switch
+      # VM localds cdrom
+      check_value "$1" "$2"
+      vm_cdrom="$2"
+      shift 2
+      ;;
     --checkconfig)        # switch
       # Check config
       check_config
@@ -1234,6 +1361,12 @@ while test $# -gt 0; do
       vm_cidr="$2"
       shift 2
       ;;
+    --cloud*)              # switch
+      # VM cloud-init config
+      check_value "$1" "$2"
+      vm_init_cfg="$2"
+      shift 2
+      ;;
     --cpus)               # switch
       # Number of VM CPUs
       check_value "$1" "$2"
@@ -1244,6 +1377,12 @@ while test $# -gt 0; do
       # Type of CPU within VM
       check_value "$1" "$2"
       vm_cputype="$2"
+      shift 2
+      ;;
+    --crypt)              # switch
+      # VM password crypt
+      check_value "$1" "$2"
+      vm_crypt="$2"
       shift 2
       ;;
     --debug)              # switch
@@ -1340,9 +1479,15 @@ while test $# -gt 0; do
       shift 2
       ;;
     --group|--groupname)  # switch
-      # Group
+      # Primary Group a user is member of in VM image
       check_value "$1" "$2"
       vm_groupname="$2"
+      shift 2
+      ;;
+    --groups)  # switch
+      # Additional groups a user is a member of in VM image
+      check_value "$1" "$2"
+      vm_groups="$2"
       shift 2
       ;;
     --help|--usage|-h)    # switch
@@ -1405,6 +1550,12 @@ while test $# -gt 0; do
       vm_net_bus="$2"
       shift 2
       ;;
+    --netc*|--networkc*)  # switch
+      # VM network config file
+      check_value "$1" "$2"
+      vm_net_cfg="$2"
+      shift 2
+      ;;
     --netdev|--nic)       # switch
       # VM network device (e.g. enp1s0)
       check_value "$1" "$2"
@@ -1464,6 +1615,12 @@ while test $# -gt 0; do
       # Post install script
       check_value "$1" "$2"
       post_script="$2"
+      shift 2
+      ;;
+    --power*)             # switch
+      # VM power state
+      check_value "$1" "$2"
+      vm_power="$2"
       shift 2
       ;;
     --ram)                # switch

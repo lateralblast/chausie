@@ -107,4 +107,6 @@
 # 0.5.3: Tue  3 Sep 2024 21:25:28 AEST
 # Added code to set shell for user
 # 0.5.4: Tue  3 Sep 2024 21:32:54 AEST
-# Addec code to update DNS resolution
+# Added code to update DNS resolution
+# 0.5.5: Wed  4 Sep 2024 12:19:53 AEST
+# Added initial cloud-init support and ran script through shellcheck
