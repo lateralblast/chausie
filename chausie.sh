@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.4
+# Version:      0.6.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -20,12 +20,12 @@
 # Set/get some environment parameters
 
 script_args="$*"
+script_file="$0"
 script_name="chausie"
-script_path=$( pwd )
-script_bin=$( basename "$0" |sed "s/^\.\///g")
-script_file="$script_path/$script_bin"
-script_dir=$( dirname "$script_file" )
-script_vers=$( grep '^# Version' < "$0" | awk '{print $3}' )
+script_file=$( realpath "$script_file" )
+script_path=$( dirname "$script_file" )
+module_path="$script_path/modules"
+script_bin=$( basename "$script_file" )
 os_name=$( uname )
 os_arch=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
 os_user=$( whoami )
@@ -100,6 +100,7 @@ print_usage () {
 # Print version
 
 print_version () {
+  script_vers=$( grep '^# Version' < "$0" | awk '{print $3}' )
   echo "$script_vers"
 }
 
@@ -303,11 +304,11 @@ execute_command () {
 
 # Load modules
 
-if [ -d "$mod_path" ]; then
-  modules=$( ls "$mod_path"/*.sh )
-  for module in "${modules[@]}"; do
+if [ -d "$module_path" ]; then
+  modules=$( find "$module_path" -name "*.sh" )
+  for module in $modules; do
     if [[ "$script_args" =~ "verbose" ]]; then
-      echo "Loading Module: $module"
+     verbose_message "Module $module" "load"
     fi
     . "$module"
   done
@@ -901,7 +902,7 @@ reset_defaults () {
     set -u
   fi
   verbose_message "Enabling strict mode" "notice"
-  if [ "$do_dryrun" = "true" ]
+  if [ "$do_dryrun" = "true" ]; then
     verbose_message "Enabling dryrun mode" "notice"
   fi
   if [ "$vm_arch" = "" ]; then
@@ -1051,7 +1052,7 @@ reset_defaults () {
   fi
   verbose_message "Setting VM OS variant to \"$vm_osvariant\"" "notice"
   if [ "$post_script" = "" ]; then
-    post_script="$script_dir/scripts/post_install.sh"
+    post_script="$script_path/scripts/post_install.sh"
   fi
   verbose_message "Setting post install script to \"$post_script\"" "notice"
   if [ "$vm_power" = "" ]; then

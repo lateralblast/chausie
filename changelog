@@ -128,3 +128,5 @@
 # Updated code for handling SSH keys
 # 0.6.4: Wed  4 Sep 2024 16:27:26 AEST
 # Added code to support hardware pass-through and features
+# 0.6.5: Thu  5 Sep 2024 20:14:24 AEST
+# Bug fixes and improvements
