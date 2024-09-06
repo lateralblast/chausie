@@ -132,3 +132,5 @@
 # Bug fixes and improvements
 # 0.6.6: Fri Sep  6 10:48:07 AM AEST 2024
 # Cleaned uo action(s) and option(s) switches
+# 0.6.7: Fri  6 Sep 2024 13:54:39 AEST
+# Added mask function

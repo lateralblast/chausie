@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.6
+# Version:      0.6.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -191,6 +191,7 @@ set_defaults () {
   do_autostart="false"
   do_reboot="false"
   do_localds="true"
+  do_mask="false"
   vm_dhcp="false"
   vm_lock="false"
   vm_cpus=""
@@ -708,40 +709,47 @@ generate_crypt () {
 
 configure_init () {
   temp_file="/tmp/cloud-init.cfg"
+  mask_file="/tmp/cloud-init.cfg.masked"
   generate_crypt
-  echo "#cloud-config"                     > "$temp_file"
-  echo "hostname: $vm_hostname"           >> "$temp_file"
-  echo "groups:"                          >> "$temp_file"
-  echo "  - $vm_groupname: $vm_username"  >> "$temp_file"
-  echo "users:"                           >> "$temp_file"
-  echo "  - default"                      >> "$temp_file"
-  echo "  - name: $vm_username"           >> "$temp_file"
-  echo "    gecos: $vm_gecos"             >> "$temp_file"
-  echo "    primary_group: $vm_groupname" >> "$temp_file"
-  echo "    groups: $vm_groups"           >> "$temp_file"
-  echo "    shell: $vm_shell"             >> "$temp_file"
-  echo "    passwd: \"$vm_crypt\""        >> "$temp_file"
+  echo "#cloud-config"                    |tee "$mask_file" > "$temp_file"
+  echo "hostname: $vm_hostname"           |tee -a "$mask_file" >> "$temp_file"
+  echo "groups:"                          |tee -a "$mask_file" >> "$temp_file"
+  echo "  - $vm_groupname: $vm_username"  |tee -a "$mask_file" >> "$temp_file"
+  echo "users:"                           |tee -a "$mask_file" >> "$temp_file"
+  echo "  - default"                      |tee -a "$mask_file" >> "$temp_file"
+  echo "  - name: $vm_username"           |tee -a "$mask_file" >> "$temp_file"
+  echo "    gecos: $vm_gecos"             |tee -a "$mask_file" >> "$temp_file"
+  echo "    primary_group: $vm_groupname" |tee -a "$mask_file" >> "$temp_file"
+  echo "    groups: $vm_groups"           |tee -a "$mask_file" >> "$temp_file"
+  echo "    shell: $vm_shell"             |tee -a "$mask_file" >> "$temp_file"
+  echo "    passwd: \"#MASKED#\""                              >> "$mask_file"
+  echo "    passwd: \"$vm_crypt\""                             >> "$temp_file"
   if [ ! "$ssh_key" = "" ]; then
-    echo "    ssh-authorized-keys:"       >> "$temp_file"
-    echo "      - \"$ssh_key\""           >> "$temp_file"
+    echo "    ssh-authorized-keys:"       |tee -a "$mask_file" >> "$temp_file"
+    echo "      - \"#MASKED#\""                                >> "$mask_file"
+    echo "      - \"$ssh_key\""                                >> "$temp_file"
   fi
-  echo "    sudo: $vm_sudoers"            >> "$temp_file"
-  echo "    lock_passwd: $vm_lock"        >> "$temp_file"
-  echo "packages:"                        >> "$temp_file"
+  echo "    sudo: $vm_sudoers"            |tee -a "$mask_file" >> "$temp_file"
+  echo "    lock_passwd: $vm_lock"        |tee -a "$mask_file" >> "$temp_file"
+  echo "packages:"                        |tee -a "$mask_file" >> "$temp_file"
   if [[ "$vm_packages" =~ "," ]]; then
     IFS="," read -r -a array <<< "$vm_packages"
     for vm_package in "${array[@]}"; do
-      echo "  - $vm_package"              >> "$temp_file"
+      echo "  - $vm_package"              |tee -a "$mask_file" >> "$temp_file"
     done
   else
-    echo "  - $vm_packages"               >> "$temp_file"
+    echo "  - $vm_packages"               |tee -a "$mask_file" >> "$temp_file"
   fi
-  echo "growpart:"                        >> "$temp_file"
-  echo "  mode: auto"                     >> "$temp_file"
-  echo "  devices: ['/']"                 >> "$temp_file"
-  echo "power_state:"                     >> "$temp_file"
-  echo "  mode: $vm_power"                >> "$temp_file"
-  print_contents "$temp_file"
+  echo "growpart:"                        |tee -a "$mask_file" >> "$temp_file"
+  echo "  mode: auto"                     |tee -a "$mask_file" >> "$temp_file"
+  echo "  devices: ['/']"                 |tee -a "$mask_file" >> "$temp_file"
+  echo "power_state:"                     |tee -a "$mask_file" >> "$temp_file"
+  echo "  mode: $vm_power"                |tee -a "$mask_file" >> "$temp_file"
+  if [ "$do_mask" = "true" ]; then
+    print_contents "$mask_file"
+  else
+    print_contents "$temp_file"
+  fi
   execute_command "cp $temp_file $vm_init_cfg" "linuxsu"
 }
 
@@ -1084,7 +1092,7 @@ reset_defaults () {
   fi
   verbose_message "Setting group to \"$vm_groupname\"" "notice"
   if [ "$vm_gecos" = "" ]; then
-    vm_gecos="CloudAdmin"
+    vm_gecos="${vm_username}^"
   fi
   verbose_message "Setting GECOS field to \"$vm_gecos\"" "notice"
   if [ "$vm_groupid" = "" ]; then
@@ -1322,6 +1330,14 @@ process_options () {
       # Print options help
       print_usage "options"
       exit
+      ;;
+    nomask)         # option
+      # Disable masking of password and ssh keys 
+      do_mask="false"
+      ;;
+    mask)           # option
+      # Enable masking of password and ssh keys 
+      do_mask="true"
       ;;
     noreboot)       # option
       # Disable reboot
@@ -1601,6 +1617,11 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       vm_ip="$2"
       shift 2
+      ;;
+    --mask)               # switch
+      # Enable masking of password and ssh keys 
+      do_mask="true"
+      shift
       ;;
     --name|--vmname)      # switch
       # Name of VM

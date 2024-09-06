@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.6.6
+Current version 0.6.7
 
 Prerequisites
 -------------
@@ -341,10 +341,8 @@ Standard help:
 ./chausie.sh --help
 Usage: chausie.sh [OPTIONS...]
 -----
- --action)
+ --action*)
    Action to perform (e.g. createvm,deletevm)
- --actions)
-   Print available actions
  --arch)
    Specify architecture
  --boot*)
@@ -419,6 +417,8 @@ Usage: chausie.sh [OPTIONS...]
    Image URL
  --ip*)
    VM IP address
+ --mask)
+   Enable masking of password and ssh keys
  --name|--vmname)
    Name of VM
  --nettype)
@@ -429,10 +429,8 @@ Usage: chausie.sh [OPTIONS...]
    VM network config file
  --netdev|--nic)
    VM network device (e.g. enp1s0)
- --option)
+ --option*)
    Option(s) (e.g. verbose,dryrun)
- --options)
-   Print available options
  --osvariant)
    Os variant
  --osvers)
@@ -513,6 +511,10 @@ Options:
    Don't use backing (creates a full copy of image)
  options|help)
    Print options help
+ nomask)
+   Disable masking of password and ssh keys
+ mask)
+   Enable masking of password and ssh keys
  noreboot)
    Disable reboot
  reboot)
