@@ -130,3 +130,5 @@
 # Added code to support hardware pass-through and features
 # 0.6.5: Thu  5 Sep 2024 20:14:24 AEST
 # Bug fixes and improvements
+# 0.6.6: Fri Sep  6 10:48:07 AM AEST 2024
+# Cleaned uo action(s) and option(s) switches

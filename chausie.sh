@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.5
+# Version:      0.6.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1376,18 +1376,12 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action)             # switch
+    --action*)             # switch
       # Action to perform (e.g. createvm,deletevm)
       check_value "$1" "$2"
       actions="$2"
       do_actions="true"
       shift 2
-      ;;
-    --actions)            # switch
-      # Print available actions
-      print_usage "actions"
-      shift
-      exit
       ;;
     --arch)               # switch
       # Specify architecture
@@ -1638,18 +1632,12 @@ while test $# -gt 0; do
       vm_net_dev="$2"
       shift 2
       ;;
-    --option)             # switch
+    --option*)             # switch
       # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
       options="$2"
       do_options="true"
       shift 2
-      ;;
-    --options)            # switch
-      # Print available options
-      print_usage "options"
-      shift
-      exit
       ;;
     --osvariant)          # switch
       # Os variant
