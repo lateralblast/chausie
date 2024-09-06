@@ -1092,7 +1092,7 @@ reset_defaults () {
   fi
   verbose_message "Setting group to \"$vm_groupname\"" "notice"
   if [ "$vm_gecos" = "" ]; then
-    vm_gecos="${vm_username}^"
+    vm_gecos="${vm_username^}"
   fi
   verbose_message "Setting GECOS field to \"$vm_gecos\"" "notice"
   if [ "$vm_groupid" = "" ]; then
