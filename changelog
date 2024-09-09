@@ -140,3 +140,5 @@
 # Added code to determine CIDR
 # 0.7.0: Mon  9 Sep 2024 16:28:29 AEST
 # Added code to determine DNS
+# 0.7.1: Mon  9 Sep 2024 16:32:38 AEST
+# Fixed CIDR determination
