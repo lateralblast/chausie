@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.6.8
+Current version 0.6.9
 
 Prerequisites
 -------------
@@ -21,6 +21,7 @@ Required packages:
 - whois (mkpasswd)
 - virt-manager
 - cloud-image-utils
+- ipcalc
 
 You'll also need to configure network bridges (the default is br0, but can be changed)
 if you want to use the default settings. You could configure it with NAT, or internal/

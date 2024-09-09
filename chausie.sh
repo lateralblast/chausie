@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.8
+# Version:      0.6.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -149,6 +149,33 @@ check_shellcheck () {
   fi
 }
 
+# Get gateway
+
+get_gateway () {
+  if [ "$os_name" = "Darwin" ]; then
+    vm_gateway=$( route -n get default |grep gateway |awk '{print $2}' )
+  else
+    vm_gateway=$( ip r |grep default |awk '{print $3}' )
+  fi
+}
+
+# Get cidr
+
+get_cidr () {
+  if [ "$os_name" = "Darwin" ]; then
+    bin_test=$( command -v ipcalc | grep -c ipcalc )
+    if [ ! "$bin_test" = "0" ]; then
+      interface=$( route -n get default |grep interface |awk '{print $2}' )
+      vm_netmask=$( ifconfig "$interface" |grep mask |awk '{print $4}' )
+      vm_cidr=$( ipcalc "1.1.1.1" "$vm_netmask" | grep ^Netmask |awk '{print $4}' )
+    else
+      vm_cidr="24"
+    fi
+  else  
+    vm_cidr=$( ip r |grep link|awk '{print $1}' |cut -f1 -d/ )
+  fi
+}
+
 # Check VM name
 
 check_vm_name () {
@@ -229,6 +256,7 @@ set_defaults () {
   vm_power=""
   vm_home_dir=""
   vm_sudoers=""
+  vm_netmask=""
   vm_file_perms=""
   vm_file_owner=""
   vm_file_group=""
@@ -979,8 +1007,12 @@ reset_defaults () {
     vm_net_dev="enp1s0"
   fi
   verbose_message "Setting VM network device to \"$vm_net_dev\"" "notice"
+  if [ "$vm_gateway" = "" ]; then
+    get_gateway
+  fi
+  verbose_message "Setting VM gateway to \"$vm_gateway\"" "notice"
   if [ "$vm_cidr" = "" ]; then
-    vm_cidr="24"
+    get_cidr
   fi
   verbose_message "Setting VM CIDR to \"$vm_cidr\"" "notice"
   if [ "$vm_dns" = "" ]; then
