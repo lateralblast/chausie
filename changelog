@@ -138,3 +138,5 @@
 # Updated default group
 # 0.6.9: Mon  9 Sep 2024 15:10:34 AEST
 # Added code to determine CIDR
+# 0.7.0: Mon  9 Sep 2024 16:28:29 AEST
+# Added code to determine DNS

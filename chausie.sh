@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.6.9
+# Version:      0.7.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -146,6 +146,16 @@ check_shellcheck () {
   bin_test=$( command -v shellcheck | grep -c shellcheck )
   if [ ! "$bin_test" = "0" ]; then
     shellcheck "$script_file"
+  fi
+}
+
+# Get DNS
+
+get_dns () {
+  if [ "$os_name" = "Darwin" ]; then
+    vm_dns=$( scutil --dns | grep nameserver |head -1 |awk '{print $3}' )
+  else
+    vm_dns=$( resolvectl |grep "Current DNS" |awk '{print $4}' )
   fi
 }
 
@@ -1016,7 +1026,7 @@ reset_defaults () {
   fi
   verbose_message "Setting VM CIDR to \"$vm_cidr\"" "notice"
   if [ "$vm_dns" = "" ]; then
-    vm_dns="8.8.8.8"
+    get_dns
   fi
   verbose_message "Setting VM DNS server to \"$vm_dns\"" "notice"
   if [ ! "$vm_host_device" = "" ]; then
