@@ -142,3 +142,7 @@
 # Added code to determine DNS
 # 0.7.1: Mon  9 Sep 2024 16:32:38 AEST
 # Fixed CIDR determination
+# 0.7.2: Tue 10 Sep 2024 14:28:28 AEST
+# Added code to install cloud-localds on MacOS
+# 0.7.3: Tue 10 Sep 2024 14:38:39 AEST
+# Added ipcalc to required packages on MacOS

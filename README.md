@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.7.1
+Current version 0.7.3
 
 Prerequisites
 -------------
@@ -82,13 +82,13 @@ I wrote this script as I was tired of Canonical's inconsistent cloud-init suppor
 I understand having some differences between physical and virtual machines, e.g.
 ISO based installs versus using Cloud Images, but when my instructions/workflow for 20.04
 and 22.04 stopped working with 24.04, I thought I'd write a script to help handle these
-inconsistencies for cloud images. 
+inconsistencies for cloud images.
 
 This script is also able do updates to images using virt-customize to bootstrap the image
 (e.g. configure network, and SSH keys) if needed, and then use my existing ansible workflow
 to finish configuring the VM rather than using cloud-init.
 
-The script also support hardware pass-through, making it slighty easier to configure that 
+The script also support hardware pass-through, making it slighty easier to configure that
 (you still need to the host side and inside the VM) with the --hostdevice switch which
 you can pass the host PCI ID to, e.g.
 

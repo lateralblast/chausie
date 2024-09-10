@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.7.1
+# Version:      0.7.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -179,9 +179,10 @@ get_cidr () {
       vm_netmask=$( ifconfig "$interface" |grep mask |awk '{print $4}' )
       vm_cidr=$( ipcalc "1.1.1.1" "$vm_netmask" | grep ^Netmask |awk '{print $4}' )
     else
+      verbose_message "Tool ipcalc not found" "warn"
       vm_cidr="24"
     fi
-  else  
+  else
     vm_cidr=$( ip r |grep link|awk '{print $1}' |cut -f1 -d/ )
   fi
 }
@@ -281,7 +282,7 @@ set_defaults () {
   libvirt_groups="kvm libvirt libvirt-qemu"
   if [ "$os_name" = "Darwin" ]; then
     installed_packages=$( brew list )
-    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo"
+    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc"
   else
     vm_bridge="br0"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
@@ -379,6 +380,14 @@ check_config () {
     done
   fi
   check_packages
+  if [ "$os_name" = "Darwin" ]; then
+    localds_bin="/usr/local/bin/cloud-localds"
+    localds_url="https://raw.githubusercontent.com/canonical/cloud-utils/main/bin/cloud-localds"
+    if [ ! -f "$localds_bin" ]; then
+      execute_command "curl -o $localds_bin $localds_url" "su"
+      execute_command "chmod +x $localds_bin" "su"
+    fi
+  fi
 }
 
 # Fix Linux libvirt perms
@@ -1374,11 +1383,11 @@ process_options () {
       exit
       ;;
     nomask)         # option
-      # Disable masking of password and ssh keys 
+      # Disable masking of password and ssh keys
       do_mask="false"
       ;;
     mask)           # option
-      # Enable masking of password and ssh keys 
+      # Enable masking of password and ssh keys
       do_mask="true"
       ;;
     noreboot)       # option
@@ -1661,7 +1670,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --mask)               # switch
-      # Enable masking of password and ssh keys 
+      # Enable masking of password and ssh keys
       do_mask="true"
       shift
       ;;
