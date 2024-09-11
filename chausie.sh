@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.7.3
+# Version:      0.7.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -134,7 +134,7 @@ check_packages () {
       if [ "$os_name" = "Darwin" ]; then
         execute_command "brew install $package" ""
       else
-        execute_command "apt-get install $package" "su"
+        execute_command "apt-get install -y $package" "su"
       fi
     fi
   done
@@ -155,7 +155,10 @@ get_dns () {
   if [ "$os_name" = "Darwin" ]; then
     vm_dns=$( scutil --dns | grep nameserver |head -1 |awk '{print $3}' )
   else
-    vm_dns=$( resolvectl |grep "Current DNS" |awk '{print $4}' )
+    vm_dns=$( resolvectl |grep "DNS Servers" |head -1 |awk '{print $3}' )
+    if [ "$vm_dns" = "" ]; then
+      vm_dns=$( resolvectl |grep "Current DNS" |awk '{print $4}' )
+    fi
   fi
 }
 
@@ -183,7 +186,11 @@ get_cidr () {
       vm_cidr="24"
     fi
   else
-    vm_cidr=$( ip r |grep link|awk '{print $1}' |cut -f1 -d/ )
+    vm_cidr=$( ip r |grep link|awk '{print $1}' |cut -f2 -d/ )
+    if [[ "$vm_cidr" =~ "." ]] || [ "$vm_cidr" = "" ]; then
+      vm_netmask=$( route -n |awk '{print $3}' |grep "^255" )
+      vm_cidr=$( ipcalc "1.1.1.1" "$vm_netmask" | grep ^Netmask |awk '{print $4}' )
+    fi
   fi
 }
 
@@ -282,11 +289,11 @@ set_defaults () {
   libvirt_groups="kvm libvirt libvirt-qemu"
   if [ "$os_name" = "Darwin" ]; then
     installed_packages=$( brew list )
-    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc"
+    required_packages="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
   else
     vm_bridge="br0"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
-    required_packages="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils"
+    required_packages="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc"
   fi
   image_dir=""
 }
@@ -466,10 +473,12 @@ delete_pool () {
 # Check VM bridge
 
 check_bridge () {
-  bridge_check=$( ip link show $vm_bridge 2>&1 |grep "does not exist" |wc -c )
-  if [ ! "$bridge_check" = "0" ]; then
-    verbose_message "Bridge device \"$vm_bridge\" does not exist" "warn"
-    do_exit
+  if [ "$os_name" = "Linux" ]; then
+    bridge_check=$( ip link show $vm_bridge 2>&1 |grep "does not exist" |wc -c )
+    if [ ! "$bridge_check" = "0" ]; then
+      verbose_message "Bridge device \"$vm_bridge\" does not exist" "warn"
+      do_exit
+    fi
   fi
 }
 
@@ -518,7 +527,11 @@ create_vm () {
   if [ "$do_localds" = "true" ]; then
     configure_network
     configure_init
-    execute_command "cloud-localds --network-config $vm_net_cfg $vm_cdrom $vm_init_cfg" "linuxsu"
+    if [ "$os_name" = "Linux" ]; then
+      execute_command "cloud-localds --network-config $vm_net_cfg $vm_cdrom $vm_init_cfg" "linuxsu"
+    else
+      execute_command "mkisofs -output $vm_cdrom -volid cidata -joliet -rock {$vm_init_cfg,$vm_net_cfg}"
+    fi
   fi
   if [ "$do_autoconsole" = "false" ]; then
     cli_autoconsole="--noautoconsole"
