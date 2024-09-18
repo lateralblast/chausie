@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.7.4
+# Version:      0.7.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -366,22 +366,30 @@ fi
 check_config () {
   verbose_message "Checking config" "info"
   for check_dir in $virt_dir $image_dir $cache_dir; do
+    verbose_message "Checking directory \"$check_dir\" exists" "info"
     if [ ! -d "$check_dir" ]; then
-      execute_command "mkdir -p $virt_dir" "linuxsu"
+      verbose_message "Creating directory \"$check_dir\"" "notice"
+      execute_command "mkdir -p $check_dir" "linuxsu"
     fi
   done
   if [ "$os_name" = "Linux" ]; then
+    verbose_message "Checking group permissions on \"/dev/kvm\"" "info"
     group_check=$( sudo stat -c "%G" "/dev/kvm" )
     if [ ! "$group_check" = "kvm" ]; then
+      verbose_message "Fixing group permissions on \"/dev/kvm\"" "notice"
       execute_command "chown root:kvm /dev/kvm" "su"
     fi
+    verbose_message "Checking permissions on \"$image_dir\"" "info"
     perms_check=$( sudo stat -c "%a" "$image_dir" )
     if [ ! "$perms_check" = "775" ]; then
+      verbose_message "Fixing permissions on \"$image_dir\"" "notice"
       execute_command "chmod -R 775 $image_dir" "su"
     fi
     for group in $libvirt_groups; do
+      verbose_message "Checking user \"$os_user\" is a member of a group \"$group\"" "info"
       group_check=$( groups |grep -c "$group " )
       if [ "$group_check" = "0" ]; then
+        verbose_message "Adding user \"$os_user\" to group \"$group\"" "notice"
         execute_command "usermod -a -G $group $os_user" "su"
       fi
     done
@@ -454,7 +462,7 @@ create_pool () {
     fix_libvirt_perms "$pool_dir"
 
   else
-    verbose_message "Pool \"$pool_name\" already exists" "notice"aaaaaaaa
+    verbose_message "Pool \"$pool_name\" already exists" "notice"
   fi
 }
 
@@ -1486,12 +1494,6 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       vm_cdrom="$2"
       shift 2
-      ;;
-    --checkconfig)        # switch
-      # Check config
-      check_config
-      shift
-      exit
       ;;
     --cidr)               # switch
       # VM CIDR
