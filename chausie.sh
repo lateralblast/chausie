@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.7.5
+# Version:      0.7.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -186,7 +186,7 @@ get_cidr () {
       vm_cidr="24"
     fi
   else
-    vm_cidr=$( ip r |grep link|awk '{print $1}' |cut -f2 -d/ )
+    vm_cidr=$( ip r |grep link |grep "$vm_bridge" |awk '{print $1}' |cut -f2 -d/ )
     if [[ "$vm_cidr" =~ "." ]] || [ "$vm_cidr" = "" ]; then
       vm_netmask=$( route -n |awk '{print $3}' |grep "^255" )
       vm_cidr=$( ipcalc "1.1.1.1" "$vm_netmask" | grep ^Netmask |awk '{print $4}' )
@@ -387,7 +387,7 @@ check_config () {
     fi
     for group in $libvirt_groups; do
       verbose_message "Checking user \"$os_user\" is a member of a group \"$group\"" "info"
-      group_check=$( groups |grep -c "$group " )
+      group_check=$( groups |grep -c "$group" )
       if [ "$group_check" = "0" ]; then
         verbose_message "Adding user \"$os_user\" to group \"$group\"" "notice"
         execute_command "usermod -a -G $group $os_user" "su"

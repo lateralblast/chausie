@@ -150,3 +150,5 @@
 # Improved CIDR determination on Linux
 # 0.7.5: Wed 18 Sep 2024 10:44:54 AEST
 # Removed --checkconfig switch and fixed some bugs
+# 0.7.6: Wed 18 Sep 2024 11:16:54 AEST
+# Fixed CIDR check on Linux when there are multiple interfaces
