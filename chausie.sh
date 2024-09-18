@@ -1033,10 +1033,12 @@ reset_defaults () {
     vm_net_type="bridge"
   fi
   verbose_message "Setting VM network type to \"$vm_net_type\"" "notice"
-  if [ "$os_name" = "Darwin" ]; then
-    vm_bridge="en0"
-  else
-    vm_bridge="br0"
+  if [ "$vm_bridge" ]; then
+    if [ "$os_name" = "Darwin" ]; then
+      vm_bridge="en0"
+    else
+      vm_bridge="br0"
+    fi
   fi
   verbose_message "Setting VM bridge to \"$vm_bridge\"" "notice"
   if [ "$vm_net_bus" = "" ]; then
