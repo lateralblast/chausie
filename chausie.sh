@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.7.6
+# Version:      0.8.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -132,7 +132,7 @@ check_packages () {
     package_check=$( echo "$installed_packages" |grep -c "^$package$" )
     if [ "$package_check" = "0" ]; then
       if [ "$os_name" = "Darwin" ]; then
-        execute_command "brew install $package" ""
+        execute_command "brew install $package"       ""
       else
         execute_command "apt-get install -y $package" "su"
       fi
@@ -325,7 +325,7 @@ get_cidr () {
 
 check_vm_name () {
   if [ "$vm_name" = "" ]; then
-    verbose_message "VM name is not set" "warn"
+    verbose_message "VM name is not set"        "warn"
     do_exit
   fi
   if [ "$vm_name" = "$script_name" ]; then
@@ -443,7 +443,7 @@ verbose_message () {
         echo "Notice:       $message"
         ;;
       "verbose")
-        echo "$message"
+        echo               "$message"
         ;;
       "warn")
         echo "Warning:      $message"
@@ -528,7 +528,7 @@ check_config () {
     localds_url="https://raw.githubusercontent.com/canonical/cloud-utils/main/bin/cloud-localds"
     if [ ! -f "$localds_bin" ]; then
       execute_command "curl -o $localds_bin $localds_url" "su"
-      execute_command "chmod +x $localds_bin" "su"
+      execute_command "chmod +x $localds_bin"             "su"
     fi
   fi
 }
@@ -538,8 +538,8 @@ check_config () {
 fix_libvirt_perms () {
   file_name="$1"
   if [ "$os_name" = "Linux" ]; then
-    execute_command "chown root:libvirt-qemu $file_name" "su"
-    execute_command "chmod 775 $file_name" "su"
+    execute_command "chown root:libvirt-qemu $file_name"  "su"
+    execute_command "chmod 775 $file_name"                "su"
   fi
 }
 
@@ -646,8 +646,8 @@ create_disk () {
   if [ "$do_backing" = "true" ]; then
     execute_command "qemu-img create -b $release_dir/$image_file -F qcow2 -f qcow2 $vm_disk $vm_size" "linuxsu"
   else
-    execute_command "cp $release_dir/$image_file $vm_disk" "linuxsu"
-    execute_command "qemu-img resize $vm_disk $vm_size" "linuxsu"
+    execute_command "cp $release_dir/$image_file $vm_disk"  "linuxsu"
+    execute_command "qemu-img resize $vm_disk $vm_size"     "linuxsu"
   fi
 }
 
@@ -798,7 +798,7 @@ inject_key () {
         verbose_message "VM disk \"$vm_disk\" does not exist" "warn"
       fi
     else
-      verbose_message "SSH key file \"$ssh_key_file\" does not exist" "warn"
+      verbose_message "Key file \"$ssh_key_file\" does not exist" "warn"
     fi
   else
     verbose_message "VM \"$vm_name\" does not exist" "warn"
@@ -1101,18 +1101,18 @@ reset_defaults () {
   if [ "$do_debug" = "true" ]; then
     set -x
   fi
-  verbose_message "Enabling debug mode" "notice"
+  verbose_message "Enabling debug mode"           "notice"
   if [ "$do_strict" = "true" ]; then
     set -u
   fi
-  verbose_message "Enabling strict mode" "notice"
+  verbose_message "Enabling strict mode"          "notice"
   if [ "$do_dryrun" = "true" ]; then
-    verbose_message "Enabling dryrun mode" "notice"
+    verbose_message "Enabling dryrun mode"        "notice"
   fi
   if [ "$vm_arch" = "" ]; then
     vm_arch="$os_arch"
   fi
-  verbose_message "Setting VM arch to \"$vm_arch\"" "notice"
+  verbose_message "Setting arch to \"$vm_arch\""  "notice"
   if [ "$vm_cputype" = "" ]; then
     if [ "$os_name" = "Darwin" ]; then
       if [ "$os_arch" = "arm64" ]; then
@@ -1124,23 +1124,23 @@ reset_defaults () {
       vm_cputype="host"
     fi
   fi
-  verbose_message "Setting CPU type to \"$vm_cputype\"" "notice"
+  verbose_message "Setting CPU type to \"$vm_cputype\""     "notice"
   if [ "$vm_name" = "" ]; then
     vm_name="$script_name"
   fi
-  verbose_message "Setting VM name to \"$vm_name\"" "notice"
+  verbose_message "Setting VM name to \"$vm_name\""         "notice"
   if [ "$vm_cpus" = "" ]; then
     vm_cpus="2"
   fi
-  verbose_message "Setting VM CPUs to \"$vm_cpus\"" "notice"
+  verbose_message "Setting VM CPUs to \"$vm_cpus\""         "notice"
   if [ "$vm_ram" = "" ]; then
     vm_ram="4096"
   fi
-  verbose_message "Setting VM RAM to \"$vm_ram\"" "notice"
+  verbose_message "Setting VM RAM to \"$vm_ram\""           "notice"
   if [ "$vm_size" = "" ]; then
     vm_size="20G"
   fi
-  verbose_message "Setting VM size to \"$vm_size\"" "notice"
+  verbose_message "Setting VM size to \"$vm_size\""         "notice"
   if [ "$os_vers" = "" ]; then
     if [ "$os_codename" = "" ]; then
       os_vers="24.04"
@@ -1148,23 +1148,23 @@ reset_defaults () {
       get_release_from_codename
     fi
   fi
-  verbose_message "Setting OS version to \"$os_vers\"" "notice"
+  verbose_message "Setting OS version to \"$os_vers\""      "notice"
   if [ "$vm_boot" = "" ]; then
     vm_boot="uefi"
   fi
-  verbose_message "Setting VM boot type to \"$vm_boot\"" "notice"
+  verbose_message "Setting boot type to \"$vm_boot\""       "notice"
   if [ "$vm_graphics" = "" ]; then
     vm_graphics="none"
   fi
-  verbose_message "Setting VM vm_graphics to \"$vm_graphics\"" "notice"
+  verbose_message "Setting graphics to \"$vm_graphics\""    "notice"
   if [ "$vm_hostname" = "" ]; then
     vm_hostname="$vm_name"
   fi
-  verbose_message "Setting VM hostname to \"$vm_hostname\"" "notice"
+  verbose_message "Setting hostname to \"$vm_hostname\""    "notice"
   if [ "$vm_net_type" = "" ]; then
     vm_net_type="bridge"
   fi
-  verbose_message "Setting VM network type to \"$vm_net_type\"" "notice"
+  verbose_message "Setting net type to \"$vm_net_type\""    "notice"
   if [ "$vm_bridge" ]; then
     if [ "$os_name" = "Darwin" ]; then
       vm_bridge="en0"
@@ -1172,48 +1172,48 @@ reset_defaults () {
       vm_bridge="br0"
     fi
   fi
-  verbose_message "Setting VM bridge to \"$vm_bridge\"" "notice"
+  verbose_message "Setting bridge to \"$vm_bridge\""        "notice"
   if [ "$vm_net_bus" = "" ]; then
     vm_net_bus="virtio"
   fi
-  verbose_message "Setting VM network driver/bus to \"$vm_net_bus\"" "notice"
+  verbose_message "Setting net bus to \"$vm_net_bus\""      "notice"
   if [ "$vm_net_dev" = "" ]; then
     vm_net_dev="enp1s0"
   fi
-  verbose_message "Setting VM network device to \"$vm_net_dev\"" "notice"
+  verbose_message "Setting net device to \"$vm_net_dev\""   "notice"
   if [ "$vm_gateway" = "" ]; then
     get_gateway
   fi
-  verbose_message "Setting VM gateway to \"$vm_gateway\"" "notice"
+  verbose_message "Setting gateway to \"$vm_gateway\""      "notice"
   if [ "$vm_cidr" = "" ]; then
     get_cidr
   fi
-  verbose_message "Setting VM CIDR to \"$vm_cidr\"" "notice"
+  verbose_message "Setting CIDR to \"$vm_cidr\""            "notice"
   if [ "$vm_dns" = "" ]; then
     get_dns
   fi
-  verbose_message "Setting VM DNS server to \"$vm_dns\"" "notice"
+  verbose_message "Setting DNS server to \"$vm_dns\""       "notice"
   if [ ! "$vm_host_device" = "" ]; then
     vm_features="kvm_hidden=on"
-    verbose_message "Setting VM features to \"$vm_features\"" "notice"
+    verbose_message "Setting features to \"$vm_features\""  "notice"
   fi
   if [ ! "$vm_machine" = "" ]; then
-    verbose_message "Setting VM machine type to \"$vm_machine\"" "notice"
+    verbose_message "Setting machine to \"$vm_machine\""    "notice"
   fi
   if [ "$image_file" = "" ]; then
     image_file="ubuntu-$os_vers-server-cloudimg-$os_arch.img"
   fi
-  verbose_message "Setting Cloud Image file to \"$image_file\"" "notice"
+  verbose_message "Setting Cloud Image to \"$image_file\""  "notice"
   if [ "$image_url" = "" ]; then
     image_url="https://cloud-images.ubuntu.com/releases/$os_vers/release/$image_file"
   fi
-  verbose_message "Setting Cloud Image URL to \"$image_url\"" "notice"
+  verbose_message "Setting CI URL to \"$image_url\""        "notice"
   if [ "$os_name" = "Darwin" ]; then
     brew_dir="/opt/homebrew/Cellar"
     if [ ! -d "$brew_dir" ]; then
       brew_dir="/usr/local/Cellar"
     fi
-    verbose_message "Setting brew directory to \"$brew_dir\"" "notice"
+    verbose_message "Setting brew directory to \"$brew_dir\""     "notice"
   fi
   if [ "$virt_dir" = "" ]; then
     if [ "$os_name" = "Darwin" ]; then
@@ -1222,41 +1222,41 @@ reset_defaults () {
       virt_dir="/var/lib/libvirt"
     fi
   fi
-  verbose_message "Setting libvirt directory to \"$virt_dir\"" "notice"
+  verbose_message "Setting libvirt directory to \"$virt_dir\""    "notice"
   if [ "$image_dir" = "" ]; then
     image_dir="$virt_dir/images"
   fi
-  verbose_message "Setting Image directory to \"$image_dir\"" "notice"
+  verbose_message "Setting Image directory to \"$image_dir\""     "notice"
   if [ "$vm_disk" = "" ]; then
     vm_disk="$image_dir/$vm_name/$vm_name.qcow2"
   fi
-  verbose_message "Setting VM disk to \"$vm_disk\"" "notice"
+  verbose_message "Setting disk to \"$vm_disk\""                  "notice"
   if [ "$do_localds" = "true" ]; then
     if [ "$vm_cdrom" = "" ]; then
       vm_cdrom="$image_dir/$vm_name/$vm_name.cloud.img"
     fi
-    verbose_message "Setting VM cdrom to \"$vm_cdrom\"" "notice"
+    verbose_message "Setting cdrom to \"$vm_cdrom\""              "notice"
     if [ "$vm_net_cfg" = "" ]; then
       vm_net_cfg="$image_dir/$vm_name/$vm_name.network.cfg"
     fi
-    verbose_message "Setting VM network config file to \"$vm_net_cfg\"" "notice"
+    verbose_message "Setting net config to \"$vm_net_cfg\""       "notice"
     if [ "$vm_init_cfg" = "" ]; then
       vm_init_cfg="$image_dir/$vm_name/$vm_name.cloud.cfg"
     fi
-    verbose_message "Setting VM cloud-init file to \"$vm_init_cfg\"" "notice"
+    verbose_message "Setting cloud-init to \"$vm_init_cfg\""      "notice"
     if [ "$vm_packages" = "" ]; then
       vm_packages="ansible"
     fi
-    verbose_message "Setting VM packages \"$vm_init_cfg\"" "notice"
+    verbose_message "Setting packages \"$vm_init_cfg\""           "notice"
   fi
   if [ "$pool_name" = "" ]; then
     pool_name="$vm_name"
   fi
-  verbose_message "Setting pool name to \"$pool_name\"" "notice"
+  verbose_message "Setting pool name to \"$pool_name\""           "notice"
   if [ "$pool_dir" = "" ]; then
     pool_dir="$image_dir/$pool_name"
   fi
-  verbose_message "Setting pool directory to \"$pool_dir\"" "notice"
+  verbose_message "Setting pool directory to \"$pool_dir\""       "notice"
   if [ "$release_dir" = "" ]; then
     release_dir="$image_dir/releases"
   fi
@@ -1264,19 +1264,19 @@ reset_defaults () {
   if [ "$vm_osvariant" = "" ]; then
     vm_osvariant="ubuntu$os_vers"
   fi
-  verbose_message "Setting VM OS variant to \"$vm_osvariant\"" "notice"
+  verbose_message "Setting OS variant to \"$vm_osvariant\""       "notice"
   if [ "$post_script" = "" ]; then
     post_script="$script_path/scripts/post_install.sh"
   fi
-  verbose_message "Setting post install script to \"$post_script\"" "notice"
+  verbose_message "Setting postinstall to \"$post_script\""       "notice"
   if [ "$vm_power" = "" ]; then
     vm_power="reboot"
   fi
-  verbose_message "Setting VM power state to \"$vm_power\"" "notice"
+  verbose_message "Setting power state to \"$vm_power\""          "notice"
   if [ "$cache_dir" = "" ]; then
     cache_dir="$os_home/.cache/virt-manager"
   fi
-  verbose_message "Setting cache directory to \"$cache_dir\"" "notice"
+  verbose_message "Setting cache to \"$cache_dir\""               "notice"
   if [ "$vm_username" = "" ]; then
     if [[ "$actions" =~ "password" ]]; then
       vm_username="root"
@@ -1284,62 +1284,62 @@ reset_defaults () {
       vm_username="cloudadmin"
     fi
   fi
-  verbose_message "Setting username to \"$vm_username\"" "notice"
+  verbose_message "Setting username to \"$vm_username\""  "notice"
   if [ "$vm_password" = "" ]; then
     vm_password="cloudadmin"
   fi
-  verbose_message "Setting password to \"$vm_password\"" "notice"
+  verbose_message "Setting password to \"$vm_password\""  "notice"
   if [ "$vm_userid" = "" ]; then
     vm_userid="1000"
   fi
-  verbose_message "Setting user ID to \"$vm_userid\"" "notice"
+  verbose_message "Setting user ID to \"$vm_userid\""     "notice"
   if [ "$vm_groupname" = "" ]; then
     vm_groupname="$vm_username"
   fi
-  verbose_message "Setting group to \"$vm_groupname\"" "notice"
+  verbose_message "Setting group to \"$vm_groupname\""    "notice"
   if [ "$vm_gecos" = "" ]; then
     vm_gecos="${vm_username^}"
   fi
-  verbose_message "Setting GECOS field to \"$vm_gecos\"" "notice"
+  verbose_message "Setting GECOS to \"$vm_gecos\""        "notice"
   if [ "$vm_groupid" = "" ]; then
     vm_groupid="1000"
   fi
-  verbose_message "Setting group ID to \"$vm_groupid\"" "notice"
+  verbose_message "Setting group ID to \"$vm_groupid\""   "notice"
   if [ "$vm_home_dir" = "" ]; then
     vm_home_dir="/home/$vm_username"
   fi
-  verbose_message "Setting home directory to \"$vm_home_dir\"" "notice"
+  verbose_message "Setting home to \"$vm_home_dir\""      "notice"
   if [ "$vm_groups" = "" ]; then
     vm_groups="users"
   fi
-  verbose_message "Setting groups to \"$vm_groups\"" "notice"
+  verbose_message "Setting groups to \"$vm_groups\""      "notice"
   if [ "$vm_shell" = "" ]; then
     vm_shell="/usr/bin/bash"
   fi
-  verbose_message "Setting shell to \"$vm_shell\"" "notice"
+  verbose_message "Setting shell to \"$vm_shell\""        "notice"
   if [ "$vm_sudoers" = "" ]; then
     vm_sudoers="ALL=(ALL) NOPASSWD:ALL"
   fi
-  verbose_message "Setting sudoers entry to \"$vm_sudoers\"" "notice"
+  verbose_message "Setting sudoers  to \"$vm_sudoers\""   "notice"
   if [ "$ssh_key_file" = "" ]; then
     ssh_key_file=$( find "$os_home/.ssh" -name "*.pub" |head -1 )
   fi
-  verbose_message "Setting SSH key file to \"$ssh_key_file\"" "notice"
+  verbose_message "Setting key file to \"$ssh_key_file\"" "notice"
   if [ "$ssh_key" = "" ]; then
     if [ ! "$ssh_key_file" = "" ]; then
       ssh_key=$( cat "$ssh_key_file" )
     fi
   fi
-  verbose_message "Setting SSH key to \"$ssh_key\"" "notice"
+  verbose_message "Setting SSH key to \"$ssh_key\""       "notice"
   if [ "$vm_ip" = "dhcp" ] || [ "$vm_ip" = "" ]; then
     vm_dhcp="true"
-    verbose_message "Setting network to DHCP" "notice"
+    verbose_message "Setting network to DHCP"             "notice"
   else
-    verbose_message "Setting network to static"     "notice"
-    verbose_message "Seting IP to $vm_ip"           "notice"
-    verbose_message "Seting CIDR to $vm_cidr"       "notice"
-    verbose_message "Seting gateway to $vm_gateway" "notice"
-    verbose_message "Seting DNS server to $vm_dns"  "notice"
+    verbose_message "Setting network to static"           "notice"
+    verbose_message "Seting IP to \"$vm_ip\""             "notice"
+    verbose_message "Seting CIDR to \"$vm_cidr\""         "notice"
+    verbose_message "Seting gateway to \"$vm_gateway\""   "notice"
+    verbose_message "Seting DNS server to \"$vm_dns\""    "notice"
   fi
   create_libvirt_dir "$release_dir"
 }

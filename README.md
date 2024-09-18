@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.7.8
+Current version 0.8.0
 
 Prerequisites
 -------------
@@ -352,11 +352,11 @@ Usage: chausie.sh [OPTIONS...]
    VM network bridge
  --cdrom)
    VM localds cdrom
- --checkconfig)
-   Check config
  --cidr)
    VM CIDR
  --cloud*)
+   VM cloud-init config
+ --*codename)
    VM cloud-init config
  --cpus)
    Number of VM CPUs
@@ -434,7 +434,7 @@ Usage: chausie.sh [OPTIONS...]
    Option(s) (e.g. verbose,dryrun)
  --osvariant)
    Os variant
- --osvers)
+ --osvers|--release)
    OS version of image
  --packages)
    Packages to install in VM
@@ -525,7 +525,7 @@ Options:
  verbose)
    Enable verbose mode
  version)
-   Print version
+   Print versionn
 ```
 
 Actions help:

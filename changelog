@@ -158,3 +158,5 @@
 # Added whois to required package list (for mkpasswd)
 # 0.7.9: Wed 18 Sep 2024 14:48:19 AEST
 # Added code to convert codename to release version
+# 0.8.0: Wed 18 Sep 2024 15:24:08 AEST
+# Updated documentation
