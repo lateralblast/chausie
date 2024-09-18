@@ -149,6 +149,133 @@ check_shellcheck () {
   fi
 }
 
+# Get Release from Codename
+
+get_release_from_codename () {
+  case $os_codename in
+    warty)
+      os_vers="4.10"
+      ;;
+    hoary)
+      os_vers="5.04"
+      ;;
+    breezy)
+      os_vers="5.10"
+      ;;
+    dapper)
+      os_vers="6.04"
+      ;;
+    edgy)
+      os_vers="6.10"
+      ;;
+    feisty)
+      os_vers="7.04"
+      ;;
+    gutsy)
+      os_vers="7.10"
+      ;;
+    hardy)
+      os_vers="8.04"
+      ;;
+    intrepid)
+      os_vers="8.10"
+      ;;
+    jaunty)
+      os_vers="9.04"
+      ;;
+    karmic)
+      os_vers="9.10"
+      ;;
+    lucid)
+      os_vers="10.04"
+      ;;
+    maverick)
+      os_vers="10.10"
+      ;;
+    natty)
+      os_vers="11.04"
+      ;;
+    oneiric)
+      os_vers="11.10"
+      ;;
+    precise)
+      os_vers="12.04"
+      ;;
+    quantal)
+      os_vers="12.10"
+      ;;
+    raring)
+      os_vers="13.04"
+      ;;
+    saucy)
+      os_vers="13.10"
+      ;;
+    trusty)
+      os_vers="14.04"
+      ;;
+    utopic)
+      os_vers="14.10"
+      ;;
+    vivid)
+      os_vers="15.04"
+      ;;
+    wily)
+      os_vers="15.10"
+      ;;
+    xenial)
+      os_vers="16.04"
+      ;;
+    yakkety)
+      os_vers="16.10"
+      ;;
+    zesty)
+      os_vers="17.04"
+      ;;
+    artful)
+      os_vers="17.10"
+      ;;
+    bionic)
+      os_vers="18.04"
+      ;;
+    cosmic)
+      os_vers="18.10"
+      ;;
+    disco)
+      os_vers="19.04"
+      ;;
+    eoan)
+      os_vers="19.10"
+      ;;
+    focal)
+      os_vers="20.04"
+      ;;
+    groovy)
+      os_vers="20.10"
+      ;;
+    hirsuite)
+      os_vers="21.04"
+      ;;
+    impish)
+      os_vers="21.10"
+      ;;
+    jammy)
+      os_vers="22.04"
+      ;;
+    kinetic)
+      os_vers="22.10"
+      ;;
+    lunar)
+      os_vers="23.04"
+      ;;
+    mantic)
+      os_vers="23.10"
+      ;;
+    noble)
+      os_vers="24.04"
+      ;;
+  esac
+}
+
 # Get DNS
 
 get_dns () {
@@ -243,6 +370,7 @@ set_defaults () {
   vm_ram=""
   vm_size=""
   os_vers=""
+  os_codename=""
   vm_boot=""
   vm_graphics=""
   vm_arch=""
@@ -293,7 +421,7 @@ set_defaults () {
   else
     vm_bridge="br0"
     installed_packages=$( dpkg -l |grep ^ii |awk '{print $2}' )
-    required_packages="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc"
+    required_packages="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois"
   fi
   image_dir=""
 }
@@ -1014,7 +1142,11 @@ reset_defaults () {
   fi
   verbose_message "Setting VM size to \"$vm_size\"" "notice"
   if [ "$os_vers" = "" ]; then
-    os_vers="24.04"
+    if [ "$os_codename" = "" ]; then
+      os_vers="24.04"
+    else
+      get_release_from_codename
+    fi
   fi
   verbose_message "Setting OS version to \"$os_vers\"" "notice"
   if [ "$vm_boot" = "" ]; then
@@ -1509,6 +1641,12 @@ while test $# -gt 0; do
       vm_init_cfg="$2"
       shift 2
       ;;
+    --*codename)              # switch
+      # VM cloud-init config
+      check_value "$1" "$2"
+      os_codename="$2"
+      shift 2
+      ;;
     --cpus)               # switch
       # Number of VM CPUs
       check_value "$1" "$2"
@@ -1734,7 +1872,7 @@ while test $# -gt 0; do
       vm_osvariant="$2"
       shift 2
       ;;
-    --osvers)             # switch
+    --osvers|--release)             # switch
       # OS version of image
       check_value "$1" "$2"
       os_vers="$2"
