@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.8.1
+# Version:      0.8.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -282,9 +282,12 @@ get_dns () {
   if [ "$os_name" = "Darwin" ]; then
     vm_dns=$( scutil --dns | grep nameserver |head -1 |awk '{print $3}' )
   else
-    vm_dns=$( resolvectl |grep "DNS Servers" |head -1 |awk '{print $3}' )
+    vm_dns=$( resolvectl 2> /dev/null |grep "DNS Servers" |head -1 |awk '{print $3}' )
     if [ "$vm_dns" = "" ]; then
-      vm_dns=$( resolvectl |grep "Current DNS" |awk '{print $4}' )
+      vm_dns=$( resolvectl 2> /dev/null |grep "Current DNS" |awk '{print $4}' )
+    fi
+    if [ "$vm_dns" = "" ]; then
+      vm_dns=$( nslookup www.google.com |grep Server |awk '{print $2}' |head -1 )
     fi
   fi
 }
