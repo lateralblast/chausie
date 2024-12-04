@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.8.0
+# Version:      0.8.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -313,7 +313,7 @@ get_cidr () {
       vm_cidr="24"
     fi
   else
-    vm_cidr=$( ip r |grep link |grep "$vm_bridge" |awk '{print $1}' |cut -f2 -d/ )
+    vm_cidr=$( ip r |grep link |grep "$vm_bridge" |awk '{print $1}' |cut -f2 -d/ |head -1 )
     if [[ "$vm_cidr" =~ "." ]] || [ "$vm_cidr" = "" ]; then
       vm_netmask=$( route -n |awk '{print $3}' |grep "^255" )
       vm_cidr=$( ipcalc "1.1.1.1" "$vm_netmask" | grep ^Netmask |awk '{print $4}' )

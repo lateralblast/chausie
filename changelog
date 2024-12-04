@@ -160,3 +160,5 @@
 # Added code to convert codename to release version
 # 0.8.0: Wed 18 Sep 2024 15:24:08 AEST
 # Updated documentation
+# 0.8.1: Wed Dec  4 11:21:35 AM AEDT 2024
+# Fixed bug with CIDR determination
