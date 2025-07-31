@@ -176,3 +176,7 @@
 # Improved VM state check
 # 0.8.8: Wed Jul 30 04:46:28 PM AEST 2025
 # Bug fixes
+# 0.8.9: Thu Jul 31 02:41:45 PM AEST 2025
+# Added defaults
+# 0.9.0: Thu Jul 31 03:27:28 PM AEST 2025
+# Added HWE kernel support

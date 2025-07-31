@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.8.8
+# Version:      0.9.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -26,6 +26,7 @@ declare -A vm
 declare -A cli
 declare -A script
 declare -A options
+declare -A defaults
 
 # Set/get some environment parameters
 
@@ -160,135 +161,135 @@ check_shellcheck () {
 # Get Release from Codename
 
 get_release_from_codename () {
-  case "${os['codename']}" in
+  case "${vm['codename']}" in
     warty)
-      os['vers']="4.10"
+      vm['release']="4.10"
       ;;
     hoary)
-      os['vers']="5.04"
+      vm['release']="5.04"
       ;;
     breezy)
-      os['vers']="5.10"
+      vm['release']="5.10"
       ;;
     dapper)
-      os['vers']="6.04"
+      vm['release']="6.04"
       ;;
     edgy)
-      os['vers']="6.10"
+      vm['release']="6.10"
       ;;
     feisty)
-      os['vers']="7.04"
+      vm['release']="7.04"
       ;;
     gutsy)
-      os['vers']="7.10"
+      vm['release']="7.10"
       ;;
     hardy)
-      os['vers']="8.04"
+      vm['release']="8.04"
       ;;
     intrepid)
-      os['vers']="8.10"
+      vm['release']="8.10"
       ;;
     jaunty)
-      os['vers']="9.04"
+      vm['release']="9.04"
       ;;
     karmic)
-      os['vers']="9.10"
+      vm['release']="9.10"
       ;;
     lucid)
-      os['vers']="10.04"
+      vm['release']="10.04"
       ;;
     maverick)
-      os['vers']="10.10"
+      vm['release']="10.10"
       ;;
     natty)
-      os['vers']="11.04"
+      vm['release']="11.04"
       ;;
     oneiric)
-      os['vers']="11.10"
+      vm['release']="11.10"
       ;;
     precise)
-      os['vers']="12.04"
+      vm['release']="12.04"
       ;;
     quantal)
-      os['vers']="12.10"
+      vm['release']="12.10"
       ;;
     raring)
-      os['vers']="13.04"
+      vm['release']="13.04"
       ;;
     saucy)
-      os['vers']="13.10"
+      vm['release']="13.10"
       ;;
     trusty)
-      os['vers']="14.04"
+      vm['release']="14.04"
       ;;
     utopic)
-      os['vers']="14.10"
+      vm['release']="14.10"
       ;;
     vivid)
-      os['vers']="15.04"
+      vm['release']="15.04"
       ;;
     wily)
-      os['vers']="15.10"
+      vm['release']="15.10"
       ;;
     xenial)
-      os['vers']="16.04"
+      vm['release']="16.04"
       ;;
     yakkety)
-      os['vers']="16.10"
+      vm['release']="16.10"
       ;;
     zesty)
-      os['vers']="17.04"
+      vm['release']="17.04"
       ;;
     artful)
-      os['vers']="17.10"
+      vm['release']="17.10"
       ;;
     bionic)
-      os['vers']="18.04"
+      vm['release']="18.04"
       ;;
     cosmic)
-      os['vers']="18.10"
+      vm['release']="18.10"
       ;;
     disco)
-      os['vers']="19.04"
+      vm['release']="19.04"
       ;;
     eoan)
-      os['vers']="19.10"
+      vm['release']="19.10"
       ;;
     focal)
-      os['vers']="20.04"
+      vm['release']="20.04"
       ;;
     groovy)
-      os['vers']="20.10"
+      vm['release']="20.10"
       ;;
     hirsuite)
-      os['vers']="21.04"
+      vm['release']="21.04"
       ;;
     impish)
-      os['vers']="21.10"
+      vm['release']="21.10"
       ;;
     jammy)
-      os['vers']="22.04"
+      vm['release']="22.04"
       ;;
     kinetic)
-      os['vers']="22.10"
+      vm['release']="22.10"
       ;;
     lunar)
-      os['vers']="23.04"
+      vm['release']="23.04"
       ;;
     mantic)
-      os['vers']="23.10"
+      vm['release']="23.10"
       ;;
     noble)
-      os['vers']="24.04"
+      vm['release']="24.04"
       ;;
     oracular)
-      os['vers']="24.10"
+      vm['release']="24.10"
       ;;
     plucky)
-      os['vers']="25.04"
+      vm['release']="25.04"
       ;;
     questing)
-      os['vers']="25.10"
+      vm['release']="25.10"
       ;;
   esac
 }
@@ -376,7 +377,7 @@ set_defaults () {
   vm['boot']=""
   vm['cidr']=""
   vm['size']=""
-  os['vers']=""
+  vm['release']=""
   vm['cpus']=""
   vm['name']=""
   vm['disk']=""
@@ -397,6 +398,7 @@ set_defaults () {
   vm['netdev']=""
   vm['netcfg']=""
   vm['bridge']=""
+  vm['kernel']="linux-generic"
   vm['machine']=""
   vm['sudoers']=""
   vm['netmask']=""
@@ -412,13 +414,14 @@ set_defaults () {
   vm['hostname']=""
   vm['username']=""
   vm['password']=""
-  os['codename']=""
+  vm['codename']=""
   vm['graphics']=""
   vm['imagedir']=""
   vm['imageurl']=""
   vm['poolname']=""
   vm['destfile']=""
   vm['cachedir']=""
+  vm['imagedir']=""
   vm['fileperms']=""
   vm['fileowner']=""
   vm['filegroup']=""
@@ -431,6 +434,8 @@ set_defaults () {
   vm['hostdevice']=""
   vm['releasedir']=""
   vm['sshkeyfile']=""
+  os['libvirtgroups']="kvm libvirt libvirt-qemu"
+  options['hwe']="false"
   options['mask']="false"
   options['debug']="false"
   options['force']="false"
@@ -445,16 +450,43 @@ set_defaults () {
   options['autostart']="false"
   options['shellcheck']="false"
   options['autoconsole']="false"
-  os['libvirtgroups']="kvm libvirt libvirt-qemu"
+  defaults['ram']="4096"
+  defaults['cpus']="2"
+  defaults['size']="20G"
+  defaults['boot']="uefi"
+  defaults['power']="reboot"
+  defaults['shell']="/usr/bin/bash"
+  defaults['groups']="users"
+  defaults['userid']="1000"
+  defaults['netdev']="enp1s0"
+  defaults['netbus']="virtio"
+  defaults['release']="24.04"
+  defaults['nettype']="bridge"
+  defaults['groupid']="1000"
+  defaults['sudoers']="ALL=(ALL) NOPASSWD:ALL"
+  defaults['graphics']="none"
+  defaults['features']="kvm_hidden=on"
+  defaults['packages']="ansible"
+  defaults['username']="cloudadmin"
+  defaults['password']="cloudadmin"
   if [ "${os['name']}" = "Darwin" ]; then
     os['installedpackages']=$( brew list )
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
+    defaults['bridge']="en0"
   else
-    vm['bridge']="br0"
     os['installedpackages']=$( dpkg -l |grep ^ii |awk '{print $2}' )
     os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois"
+    defaults['bridge']="br0"
   fi
-  vm['imagedir']=""
+  if [ "${os['name']}" = "Darwin" ]; then
+    if [ "${os['arch']}" = "arm64" ]; then
+      defaults['cputype']="cortex-a57"
+    else
+      defaults['cputype']="host-model"
+    fi
+  else
+    defaults['cputype']="host-model"
+  fi
 }
 
 # Verbose message
@@ -944,7 +976,7 @@ configure_init () {
   echo "  - name: ${vm['username']}"                |tee -a "${mask_file}"  >> "${temp_file}"
   echo "    gecos: ${vm['gecos']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
   echo "    primary_group: ${vm['groupname']}"      |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    groups: ${vm_groups}"                     |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    groups: ${vm['groups']}"                     |tee -a "${mask_file}"  >> "${temp_file}"
   echo "    shell: ${vm['shell']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
   echo "    passwd: \"#MASKED#\""                                           >> "${mask_file}"
   echo "    passwd: \"${vm['crypt']}\""                                     >> "${temp_file}"
@@ -1127,28 +1159,20 @@ reset_defaults () {
   if [ "${options['debug']}" = "true" ]; then
     set -x
   fi
-  verbose_message "Enabling debug mode"               "notice"
+  verbose_message "Enabling debug mode"                 "notice"
   if [ "${options['strict']}" = "true" ]; then
     set -u
   fi
-  verbose_message "Enabling strict mode"              "notice"
+  verbose_message "Enabling strict mode"                "notice"
   if [ "${options['dryrun']}" = "true" ]; then
-    verbose_message "Enabling dryrun mode"            "notice"
+    verbose_message "Enabling dryrun mode"              "notice"
   fi
   if [ "${vm['arch']}" = "" ]; then
     vm['arch']="${os['arch']}"
   fi
-  verbose_message "Setting arch to \"${vm['arch']}\"" "notice"
+  verbose_message "Setting arch to \"${vm['arch']}\""   "notice"
   if [ "${vm['cputype']}" = "" ]; then
-    if [ "${os['name']}" = "Darwin" ]; then
-      if [ "${os['arch']}" = "arm64" ]; then
-        vm['cputype']="cortex-a57"
-      else
-        vm['cputype']="host-model"
-      fi
-    else
-      vm['cputype']="host-model"
-    fi
+    vm['cputype']="${defaults['cputype']}"
   fi
   verbose_message "Setting CPU type to \"${vm['cputype']}\""     "notice"
   if [ "${vm['name']}" = "" ]; then
@@ -1156,197 +1180,193 @@ reset_defaults () {
   fi
   verbose_message "Setting VM name to \"${vm['name']}\""         "notice"
   if [ "${vm['cpus']}" = "" ]; then
-    vm['cpus']="2"
+    vm['cpus']="${defaults['cpus']}"
   fi
   verbose_message "Setting VM CPUs to \"${vm['cpus']}\""         "notice"
   if [ "${vm['ram']}" = "" ]; then
-    vm['ram']="4096"
+    vm['ram']="${defaults['ram']}"
   fi
   verbose_message "Setting VM RAM to \"${vm['ram']}\""           "notice"
   if [ "${vm['size']}" = "" ]; then
-    vm['size']="20G"
+    vm['size']="${defaults['size']}"
   fi
   verbose_message "Setting VM size to \"${vm['size']}\""         "notice"
-  if [ "${os['vers']}" = "" ]; then
-    if [ "${os['codename']}" = "" ]; then
-      os['vers']="24.04"
+  if [ "${vm['release']}" = "" ]; then
+    if [ "${vm['codename']}" = "" ]; then
+      vm['release']="${defaults['release']}"
     else
       get_release_from_codename
     fi
   fi
-  verbose_message "Setting OS version to \"${os['vers']}\""      "notice"
+  verbose_message "Setting OS version to \"${vm['release']}\""   "notice"
   if [ "${vm['boot']}" = "" ]; then
-    vm['boot']="uefi"
+    vm['boot']="${defaults['boot']}"
   fi
-  verbose_message "Setting boot type to \"${vm['boot']}\""       "notice"
+  verbose_message "Setting boot type to \"${vm['boot']}\""    "notice"
   if [ "${vm['graphics']}" = "" ]; then
-    vm['graphics']="none"
+    vm['graphics']="${defaults['graphics']}"
   fi
-  verbose_message "Setting graphics to \"${vm['graphics']}\""    "notice"
+  verbose_message "Setting graphics to \"${vm['graphics']}\"" "notice"
   if [ "${vm['hostname']}" = "" ]; then
     vm['hostname']="${vm['name']}"
   fi
-  verbose_message "Setting hostname to \"${vm['hostname']}\""    "notice"
+  verbose_message "Setting hostname to \"${vm['hostname']}\"" "notice"
   if [ "${vm['nettype']}" = "" ]; then
-    vm['nettype']="bridge"
+    vm['nettype']="${defaults['nettype']}"
   fi
-  verbose_message "Setting net type to \"${vm['nettype']}\""    "notice"
-  if [ "${vm['bridge']}" ]; then
-    if [ "${os['name']}" = "Darwin" ]; then
-      vm['bridge']="en0"
-    else
-      vm['bridge']="br0"
-    fi
+  verbose_message "Setting net type to \"${vm['nettype']}\""  "notice"
+  if [ "${vm['bridge']}" = "" ]; then
+    vm['bridge']="${defaults['bridge']}"
   fi
-  verbose_message "Setting bridge to \"${vm['bridge']}\""        "notice"
+  verbose_message "Setting bridge to \"${vm['bridge']}\""           "notice"
   if [ "${vm['netbus']}" = "" ]; then
-    vm['netbus']="virtio"
+    vm['netbus']="${defaults['netbus']}"
   fi
-  verbose_message "Setting net bus to \"${vm['netbus']}\""      "notice"
+  verbose_message "Setting net bus to \"${vm['netbus']}\""          "notice"
   if [ "${vm['netdev']}" = "" ]; then
-    vm['netdev']="enp1s0"
+    vm['netdev']="${defaults['netdev']}"
   fi
-  verbose_message "Setting net device to \"${vm['netdev']}\""   "notice"
+  verbose_message "Setting net device to \"${vm['netdev']}\""       "notice"
   if [ "${vm['gateway']}" = "" ]; then
     get_gateway
   fi
-  verbose_message "Setting gateway to \"${vm['gateway']}\""      "notice"
+  verbose_message "Setting gateway to \"${vm['gateway']}\""         "notice"
   if [ "${vm['cidr']}" = "" ]; then
     get_cidr
   fi
-  verbose_message "Setting CIDR to \"${vm['cidr']}\""            "notice"
+  verbose_message "Setting CIDR to \"${vm['cidr']}\""               "notice"
   if [ "${vm['dns']}" = "" ]; then
     get_dns
   fi
-  verbose_message "Setting DNS server to \"${vm['dns']}\""       "notice"
+  verbose_message "Setting DNS server to \"${vm['dns']}\""          "notice"
   if [ ! "${vm['hostdevice']}" = "" ]; then
-    vm['features']="kvm_hidden=on"
-    verbose_message "Setting features to \"${vm['features']}\""  "notice"
+    vm['features']="${defaults['features']}"
+    verbose_message "Setting features to \"${vm['features']}\""     "notice"
   fi
   if [ ! "${vm['machine']}" = "" ]; then
-    verbose_message "Setting machine to \"${vm['machine']}\""    "notice"
+    verbose_message "Setting machine to \"${vm['machine']}\""       "notice"
   fi
   if [ "${vm['imagefile']}" = "" ]; then
-    vm['imagefile']="ubuntu-${os['vers']}-server-cloudimg-${os['arch']}.img"
+    vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
   fi
-  verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""  "notice"
+  verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""   "notice"
   if [ "${vm['imageurl']}" = "" ]; then
-    vm['imageurl']="https://cloud-images.ubuntu.com/releases/${os['vers']}/release/${vm['imagefile']}"
+    vm['imageurl']="https://cloud-images.ubuntu.com/releases/${vm['release']}/release/${vm['imagefile']}"
   fi
-  verbose_message "Setting CI URL to \"${vm['imageurl']}\""        "notice"
+  verbose_message "Setting CI URL to \"${vm['imageurl']}\""         "notice"
   if [ "${os['name']}" = "Darwin" ]; then
-    brew_dir="/opt/homebrew/Cellar"
-    if [ ! -d "$brew_dir" ]; then
-      brew_dir="/usr/local/Cellar"
+    os['brewdir']="/opt/homebrew/Cellar"
+    if [ ! -d "$os['brewdir']" ]; then
+      os['brewdir']="/usr/local/Cellar"
     fi
-    verbose_message "Setting brew directory to \"${brew_dir}\""     "notice"
+    verbose_message "Setting brew directory to \"${os['brewdir']}\""     "notice"
   fi
   if [ "${vm['virtdir']}" = "" ]; then
     if [ "${os['name']}" = "Darwin" ]; then
-      vm['virtdir']="$brew_dir/libvirt"
+      vm['virtdir']="$os['brewdir']/libvirt"
     else
       vm['virtdir']="/var/lib/libvirt"
     fi
   fi
-  verbose_message "Setting libvirt directory to \"${vm['virtdir']}\""    "notice"
+  verbose_message "Setting libvirt directory to \"${vm['virtdir']}\""     "notice"
   if [ "${vm['imagedir']}" = "" ]; then
     vm['imagedir']="${vm['virtdir']}/images"
   fi
-  verbose_message "Setting Image directory to \"${vm['imagedir']}\""     "notice"
+  verbose_message "Setting Image directory to \"${vm['imagedir']}\""      "notice"
   if [ "${vm['disk']}" = "" ]; then
     vm['disk']="${vm['imagedir']}/${vm['name']}/${vm['name']}.qcow2"
   fi
-  verbose_message "Setting disk to \"${vm['disk']}\""                  "notice"
+  verbose_message "Setting disk to \"${vm['disk']}\""                     "notice"
   if [ "${options['localds']}" = "true" ]; then
     if [ "${vm['cdrom']}" = "" ]; then
       vm['cdrom']="${vm['imagedir']}/${vm['name']}/${vm['name']}.cloud.img"
     fi
-    verbose_message "Setting cdrom to \"${vm['cdrom']}\""              "notice"
+    verbose_message "Setting cdrom to \"${vm['cdrom']}\""                 "notice"
     if [ "${vm['netcfg']}" = "" ]; then
       vm['netcfg']="${vm['imagedir']}/${vm['name']}/${vm['name']}.network.cfg"
     fi
-    verbose_message "Setting net config to \"${vm['netcfg']}\""       "notice"
+    verbose_message "Setting net config to \"${vm['netcfg']}\""           "notice"
     if [ "${vm['initcfg']}" = "" ]; then
       vm['initcfg']="${vm['imagedir']}/${vm['name']}/${vm['name']}.cloud.cfg"
     fi
-    verbose_message "Setting cloud-init to \"${vm['initcfg']}\""      "notice"
+    verbose_message "Setting cloud-init to \"${vm['initcfg']}\""          "notice"
     if [ "${vm['packages']}" = "" ]; then
-      vm['packages']="ansible"
+      vm['packages']="${defaults['packages']}"
     fi
-    verbose_message "Setting packages \"${vm['initcfg']}\""           "notice"
+    verbose_message "Setting packages \"${vm['initcfg']}\""               "notice"
   fi
   if [ "${vm['poolname']}" = "" ]; then
     vm['poolname']="${vm['name']}"
   fi
-  verbose_message "Setting pool name to \"${vm['poolname']}\""           "notice"
+  verbose_message "Setting pool name to \"${vm['poolname']}\""            "notice"
   if [ "${vm['pooldir']}" = "" ]; then
     vm['pooldir']="${vm['imagedir']}/${vm['poolname']}"
   fi
-  verbose_message "Setting pool directory to \"${vm['pooldir']}\""       "notice"
+  verbose_message "Setting pool directory to \"${vm['pooldir']}\""        "notice"
   if [ "${vm['releasedir']}" = "" ]; then
     vm['releasedir']="${vm['imagedir']}/releases"
   fi
-  verbose_message "Setting release directory to \"${vm['releasedir']}\"" "notice"
+  verbose_message "Setting release directory to \"${vm['releasedir']}\""  "notice"
   if [ "${vm['osvariant']}" = "" ]; then
-    vm['osvariant']="ubuntu${os['vers']}"
+    vm['osvariant']="ubuntu${vm['release']}"
   fi
-  verbose_message "Setting OS variant to \"${vm['osvariant']}\""       "notice"
+  verbose_message "Setting OS variant to \"${vm['osvariant']}\""          "notice"
   if [ "${vm['postscript']}" = "" ]; then
     vm['postscript']="${script['path']}/scripts/post_install.sh"
   fi
-  verbose_message "Setting postinstall to \"${vm['postscript']}\""       "notice"
+  verbose_message "Setting postinstall to \"${vm['postscript']}\""        "notice"
   if [ "${vm['power']}" = "" ]; then
-    vm['power']="reboot"
+    vm['power']="${defaults['power']}"
   fi
-  verbose_message "Setting power state to \"${vm['power']}\""          "notice"
+  verbose_message "Setting power state to \"${vm['power']}\""             "notice"
   if [ "${vm['cachedir']}" = "" ]; then
     vm['cachedir']="${os['home']}/.cache/virt-manager"
   fi
-  verbose_message "Setting cache to \"${vm['cachedir']}\""               "notice"
+  verbose_message "Setting cache to \"${vm['cachedir']}\""                "notice"
   if [ "${vm['username']}" = "" ]; then
     if [[ "${actions}" =~ "password" ]]; then
       vm['username']="root"
     else
-      vm['username']="cloudadmin"
+      vm['username']="${defaults['username']}"
     fi
   fi
-  verbose_message "Setting username to \"${vm['username']}\""  "notice"
+  verbose_message "Setting username to \"${vm['username']}\""   "notice"
   if [ "${vm['password']}" = "" ]; then
-    vm['password']="cloudadmin"
+    vm['password']="${defaults['password']}"
   fi
-  verbose_message "Setting password to \"${vm['password']}\""  "notice"
+  verbose_message "Setting password to \"${vm['password']}\""   "notice"
   if [ "${vm['userid']}" = "" ]; then
-    vm['userid']="1000"
+    vm['userid']="${defaults['userid']}"
   fi
-  verbose_message "Setting user ID to \"${vm['userid']}\""     "notice"
+  verbose_message "Setting user ID to \"${vm['userid']}\""      "notice"
   if [ "${vm['groupname']}" = "" ]; then
     vm['groupname']="${vm['username']}"
   fi
-  verbose_message "Setting group to \"${vm['groupname']}\""    "notice"
+  verbose_message "Setting group to \"${vm['groupname']}\""     "notice"
   if [ "${vm['gecos']}" = "" ]; then
     vm['gecos']="${vm['username']}"
   fi
-  verbose_message "Setting GECOS to \"${vm['gecos']}\""        "notice"
+  verbose_message "Setting GECOS to \"${vm['gecos']}\""         "notice"
   if [ "${vm['groupid']}" = "" ]; then
-    vm['groupid']="1000"
+    vm['groupid']="${defaults['groupid']}"
   fi
-  verbose_message "Setting group ID to \"${vm['groupid']}\""   "notice"
+  verbose_message "Setting group ID to \"${vm['groupid']}\""    "notice"
   if [ "${vm['homedir']}" = "" ]; then
     vm['homedir']="/home/${vm['username']}"
   fi
-  verbose_message "Setting home to \"${vm['homedir']}\""      "notice"
-  if [ "${vm_groups}" = "" ]; then
-    vm_groups="users"
+  verbose_message "Setting home to \"${vm['homedir']}\""        "notice"
+  if [ "${vm['groups']}" = "" ]; then
+    vm['groups']="${defaults['groups']}"
   fi
-  verbose_message "Setting groups to \"${vm_groups}\""      "notice"
+  verbose_message "Setting groups to \"${vm['groups']}\""          "notice"
   if [ "${vm['shell']}" = "" ]; then
-    vm['shell']="/usr/bin/bash"
+    vm['shell']="${defaults['shell']}"
   fi
-  verbose_message "Setting shell to \"${vm['shell']}\""        "notice"
+  verbose_message "Setting shell to \"${vm['shell']}\""         "notice"
   if [ "${vm['sudoers']}" = "" ]; then
-    vm['sudoers']="ALL=(ALL) NOPASSWD:ALL"
+    vm['sudoers']="${defaults['sudoers']}"
   fi
-  verbose_message "Setting sudoers  to \"${vm['sudoers']}\""   "notice"
+  verbose_message "Setting sudoers  to \"${vm['sudoers']}\""    "notice"
   if [ "${vm['sshkeyfile']}" = "" ]; then
     vm['sshkeyfile']=$( find "${os['home']}/.ssh" -name "*.pub" |head -1 )
   fi
@@ -1356,16 +1376,16 @@ reset_defaults () {
       vm['sshkey']=$( cat "${vm['sshkeyfile']}" )
     fi
   fi
-  verbose_message "Setting SSH key to \"${vm['sshkey']}\""       "notice"
+  verbose_message "Setting SSH key to \"${vm['sshkey']}\""      "notice"
   if [ "${vm['ip']}" = "dhcp" ] || [ "${vm['ip']}" = "" ]; then
     vm['dhcp']="true"
-    verbose_message "Setting network to DHCP"             "notice"
+    verbose_message "Setting network to DHCP"                   "notice"
   else
-    verbose_message "Setting network to static"           "notice"
-    verbose_message "Seting IP to \"${vm['ip']}\""             "notice"
-    verbose_message "Seting CIDR to \"${vm['cidr']}\""         "notice"
-    verbose_message "Seting gateway to \"${vm['gateway']}\""   "notice"
-    verbose_message "Seting DNS server to \"${vm['dns']}\""    "notice"
+    verbose_message "Setting network to static"                 "notice"
+    verbose_message "Seting IP to \"${vm['ip']}\""              "notice"
+    verbose_message "Seting CIDR to \"${vm['cidr']}\""          "notice"
+    verbose_message "Seting gateway to \"${vm['gateway']}\""    "notice"
+    verbose_message "Seting DNS server to \"${vm['dns']}\""     "notice"
   fi
   create_libvirt_dir "${vm['releasedir']}"
 }
@@ -1522,6 +1542,14 @@ process_options () {
       # Force action
       options['force']="true"
       ;;
+    nohwe*)         # option
+      # Disable HWE kernel
+      options['hwe']="false"
+      ;;
+    hwe*)           # option
+      # Enable HWE kernel
+      options['hwe']="true"
+      ;;
     noautoconsole)  # option
       # Disable autoconsole
       options['autoconsole']="false"
@@ -1596,6 +1624,10 @@ process_options () {
       print_usage "options"
       ;;
   esac
+  if [ "${options['hwe']}" = "true" ]; then
+    vm['kernel']="linux-generic-hwe-${vm['release']}"
+    vm['packages']="${vm['packages']},${vm['kernel']}"
+  fi
 }
 
 
@@ -1670,7 +1702,7 @@ while test $# -gt 0; do
     --*codename)           # switch
       # VM cloud-init config
       check_value "$1" "$2"
-      os['codename']="$2"
+      vm['codename']="$2"
       shift 2
       ;;
     --cpus)               # switch
@@ -1799,7 +1831,7 @@ while test $# -gt 0; do
     --groups)             # switch
       # Additional groups a user is a member of in VM image
       check_value "$1" "$2"
-      vm_groups="$2"
+      vm['groups']="$2"
       shift 2
       ;;
     --help|--usage|-h)    # switch
@@ -1848,6 +1880,12 @@ while test $# -gt 0; do
       # VM IP address
       check_value "$1" "$2"
       vm['ip']="$2"
+      shift 2
+      ;;
+    --kernel*)            # switch
+      # VM kernel
+      check_value "$1" "$2"
+      vm['kernel']="$2"
       shift 2
       ;;
     --mask)               # switch
@@ -1901,7 +1939,7 @@ while test $# -gt 0; do
     --osvers|--release)             # switch
       # OS version of image
       check_value "$1" "$2"
-      os['vers']="$2"
+      vm['release']="$2"
       shift 2
       ;;
     --packages)           # switch
