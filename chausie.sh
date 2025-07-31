@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.1
+# Version:      0.9.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1482,7 +1482,7 @@ process_actions () {
       # Run command in VM image
       run_command "${command}"
       ;;
-    ssh)
+    ssh)              # action
       # SSH to VM
       ssh_to_vm
       ;;
@@ -1600,9 +1600,13 @@ process_options () {
       # Enable masking of password and ssh keys
       options['mask']="true"
       ;;
+    nopassthrough)    # option
+      # Enable passthrough
+      options['passthrough']="false"
+      ;;
     passthrough)    # option
       # Enable passthrough
-      options['mask']="true"
+      options['passthrough']="true"
       ;;
     noreboot)       # option
       # Disable reboot
