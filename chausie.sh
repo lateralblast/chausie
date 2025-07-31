@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.0
+# Version:      0.9.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -450,6 +450,7 @@ set_defaults () {
   options['autostart']="false"
   options['shellcheck']="false"
   options['autoconsole']="false"
+  options['passthrough']="false"
   defaults['ram']="4096"
   defaults['cpus']="2"
   defaults['size']="20G"
@@ -464,8 +465,8 @@ set_defaults () {
   defaults['nettype']="bridge"
   defaults['groupid']="1000"
   defaults['sudoers']="ALL=(ALL) NOPASSWD:ALL"
+  defaults['features']=""
   defaults['graphics']="none"
-  defaults['features']="kvm_hidden=on"
   defaults['packages']="ansible"
   defaults['username']="cloudadmin"
   defaults['password']="cloudadmin"
@@ -1599,6 +1600,10 @@ process_options () {
       # Enable masking of password and ssh keys
       options['mask']="true"
       ;;
+    passthrough)    # option
+      # Enable passthrough
+      options['mask']="true"
+      ;;
     noreboot)       # option
       # Disable reboot
       options['reboot']="false"
@@ -1624,6 +1629,10 @@ process_options () {
       print_usage "options"
       ;;
   esac
+  if [ "${options['passthrough']}" = "true" ]; then
+    vm['cputype']="host-passthrough"
+    vm['features']="kvm_hidden=on"
+  fi
   if [ "${options['hwe']}" = "true" ]; then
     vm['kernel']="linux-generic-hwe-${vm['release']}"
     vm['packages']="${vm['packages']},${vm['kernel']}"
@@ -1850,6 +1859,7 @@ while test $# -gt 0; do
       # VM host device pass-through
       check_value "$1" "$2"
       vm['hostdevice']="$2"
+      options['passthrough']="true"
       shift 2
       ;;
     --hostname)           # switch

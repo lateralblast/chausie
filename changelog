@@ -180,3 +180,5 @@
 # Added defaults
 # 0.9.0: Thu Jul 31 03:27:28 PM AEST 2025
 # Added HWE kernel support
+# 0.9.1: Thu Jul 31 04:44:09 PM AEST 2025
+# Improved passthrough support
