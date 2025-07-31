@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.8.2
+Current version 0.8.8
 
 Prerequisites
 -------------
@@ -22,6 +22,12 @@ Required packages:
 - virt-manager
 - cloud-image-utils
 - ipcalc
+
+Example command to install packages on Ubuntu:
+
+```
+sudo apt install -y libosinfo-bin libguestfs-tools whois virt-manager cloud-image-utils ipcalc
+```
 
 You'll also need to configure network bridges (the default is br0, but can be changed)
 if you want to use the default settings. You could configure it with NAT, or internal/

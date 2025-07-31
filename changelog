@@ -164,3 +164,15 @@
 # Fixed bug with CIDR determination
 # 0.8.2: Wed Dec  4 12:05:45 PM AEDT 2024
 # Improved nameserver determination
+# 0.8.3: Wed Jul 30 12:57:59 PM AEST 2025
+# Cleaned up script according to shellcheck recommendations
+# 0.8.4: Wed Jul 30 01:03:21 PM AEST 2025
+# Improved handling of VM name
+# 0.8.5: Wed Jul 30 02:31:35 PM AEST 2025
+# Merged check disk and create disk functions
+# 0.8.6: Wed Jul 30 02:37:59 PM AEST 2025
+# Improved check if vm exists
+# 0.8.7: Wed Jul 30 04:20:42 PM AEST 2025
+# Improved VM state check
+# 0.8.8: Wed Jul 30 04:46:28 PM AEST 2025
+# Bug fixes
