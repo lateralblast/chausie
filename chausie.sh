@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.2
+# Version:      0.9.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -449,6 +449,7 @@ set_defaults () {
   options['backing']="true"
   options['autostart']="false"
   options['shellcheck']="false"
+  options['secureboot']="false"
   options['autoconsole']="false"
   options['passthrough']="false"
   defaults['ram']="4096"
@@ -1616,6 +1617,14 @@ process_options () {
       # Enable reboot
       options['reboot']="true"
       ;;
+    nosecureboot)   # option
+      # Disable secureboot
+      options['secureboot']="false"
+      ;;
+    secureboot)     # option
+      # Enable secureboot
+      options['secureboot']="true"
+      ;;
     strict)         # option
       # Enable strict mode
       options['strict']="true"
@@ -1640,6 +1649,13 @@ process_options () {
   if [ "${options['hwe']}" = "true" ]; then
     vm['kernel']="linux-generic-hwe-${vm['release']}"
     vm['packages']="${vm['packages']},${vm['kernel']}"
+  fi
+  if [ "${vm['boot']}" = "uefi" ]; then
+    if [ "${options['secureboot']}" = "true" ]; then
+      vm['boot']="${vm['boot']},loader_secure=yes"
+    else
+      vm['boot']="${vm['boot']},loader_secure=no"
+    fi
   fi
 }
 

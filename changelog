@@ -184,3 +184,5 @@
 # Improved passthrough support
 # 0.9.2: Thu Jul 31 06:23:57 PM AEST 2025
 # Improvements
+# 0.9.3: Fri Aug  1 09:13:32 PM AEST 2025
+# Added secureboot handling
