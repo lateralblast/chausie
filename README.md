@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.9.8
+Current version 1.0.0
 
 Prerequisites
 -------------
@@ -259,4 +259,28 @@ Restart VM:
 
 ```
 ./chausie.sh --action restartvm --name test
+```
+
+Create snapshot:
+
+```
+./chause.sh --action createsnap --name test
+```
+
+List snapshots:
+
+```
+./chause.sh --action listsnaps --name test
+```
+
+Restore snapshot:
+
+```
+./chausie.sh --action restoresnap --snap test_snap_20251605001640 --hostname test
+```
+
+Delete snapshotL
+
+```
+./chausie.sh --action deletesnap --snap test_snap_20251605001640 --hostname test
 ```

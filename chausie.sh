@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.8
+# Version:      1.0.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -127,7 +127,7 @@ check_value () {
   param="$1"
   value="$2"
   if [[ "${value}" =~ "--" ]]; then
-    verbose_message "Value '${value}' for parameter '${param}' looks like a parameter" "warn"
+    warning_message "Value '${value}' for parameter '${param}' looks like a parameter"
     if [ "${options['force']}" = "false" ]; then
       do_exit
     fi
@@ -330,7 +330,7 @@ get_cidr () {
       vm['netmask']=$( ifconfig "${interface}" |grep mask |awk '{print $4}' )
       vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask |awk '{print $4}' )
     else
-      verbose_message "Tool ipcalc not found" "warn"
+      warning_message "Tool ipcalc not found"
       vm['cidr']="24"
     fi
   else
@@ -346,19 +346,19 @@ get_cidr () {
 
 check_vm_name () {
   if [ "${vm['name']}" = "" ]; then
-    verbose_message "VM name is not set" "warn"
+    warning_message "VM name is not set"
     if [ ! "${vm['hostname']}" = "" ]; then
       vm['name']="${vm['hostname']}"
-      verbose_message "Setting VM name to ${vm['name']}" "info"
+      warning_message "Setting VM name to ${vm['name']}"
     else
       do_exit
     fi
   fi
   if [ "${vm['name']}" = "${script['name']}" ]; then
-    verbose_message "VM name is set to default \"${vm['name']}\"" "warn"
+    warning_message "VM name is set to default \"${vm['name']}\""
     if [ ! "${vm['hostname']}" = "" ]; then
       vm['name']="${vm['hostname']}"
-      verbose_message "Setting VM name to ${vm['name']}" "info"
+      information_message "Setting VM name to ${vm['name']}"
     else
       if [ "${options['force']}" = "false" ]; then
         do_exit
@@ -498,19 +498,19 @@ verbose_message () {
   format="$2"
   if [ "${options['verbose']}" = "true" ] || [ "${format}" = "verbose" ]; then
     case "${format}" in
-      "execute")
+      exec*)
         echo "Executing:    ${message}"
         ;;
-      "info")
+      info*)
         echo "Information:  ${message}"
         ;;
-      "notice")
+      not*)
         echo "Notice:       ${message}"
         ;;
-      "verbose")
+      verbose)
         echo               "${message}"
         ;;
-      "warn")
+      warn*)
         echo "Warning:      ${message}"
         ;;
       *)
@@ -518,6 +518,27 @@ verbose_message () {
         ;;
     esac
   fi
+}
+
+# Warning message
+
+warning_message () {
+  message="$1"
+  verbose_message "${message}" "warn"
+}
+
+# Notice message
+
+notice_message () {
+  message="$1"
+  verbose_message "${message}" "notice"
+}
+
+# Information Message
+
+information_message () {
+  message="$1"
+  verbose_message "${message}" "info"
 }
 
 # Execute command
@@ -544,32 +565,32 @@ execute_command () {
 # Check config
 
 check_config () {
-  verbose_message "Checking config" "info"
+  information_message "Checking config"
   for check_dir in "${vm['virtdir']}" "${vm['imagedir']}" "${vm['cachedir']}"; do
-    verbose_message "Checking directory \"${check_dir}\" exists" "info"
+    information_message "Checking directory \"${check_dir}\" exists"
     if [ ! -d "${check_dir}" ]; then
-      verbose_message "Creating directory \"${check_dir}\"" "notice"
+      notice_message  "Creating directory \"${check_dir}\""
       execute_command "mkdir -p ${check_dir}" "linuxsu"
     fi
   done
   if [ "${os['name']}" = "Linux" ]; then
-    verbose_message "Checking group permissions on \"/dev/kvm\"" "info"
+    information_message "Checking group permissions on \"/dev/kvm\""
     group_check=$( sudo stat -c "%G" "/dev/kvm" )
     if [ ! "${group_check}" = "kvm" ]; then
-      verbose_message "Fixing group permissions on \"/dev/kvm\"" "notice"
+      notice_message  "Fixing group permissions on \"/dev/kvm\""
       execute_command "chown root:kvm /dev/kvm" "su"
     fi
-    verbose_message "Checking permissions on \"${vm['imagedir']}\"" "info"
+    information_message "Checking permissions on \"${vm['imagedir']}\""
     perms_check=$( sudo stat -c "%a" "${vm['imagedir']}" )
     if [ ! "$perms_check" = "775" ]; then
-      verbose_message "Fixing permissions on \"${vm['imagedir']}\"" "notice"
+      notice_message  "Fixing permissions on \"${vm['imagedir']}\""
       execute_command "chmod -R 775 ${vm['imagedir']}" "su"
     fi
     for group in ${os['libvirtgroups']}; do
-      verbose_message "Checking user \"${os['user']}\" is a member of a group \"${group}\"" "info"
+      information_message "Checking user \"${os['user']}\" is a member of a group \"${group}\""
       group_check=$( groups |grep -c "${group}" )
       if [ "${group_check}" = "0" ]; then
-        verbose_message "Adding user \"${os['user']}\" to group \"${group}\"" "notice"
+        notice_message  "Adding user \"${os['user']}\" to group \"${group}\""
         execute_command "usermod -a -G ${group} ${os['user']}" "su"
       fi
     done
@@ -664,7 +685,7 @@ check_bridge () {
   if [ "${os['name']}" = "Linux" ]; then
     bridge_check=$( ip link show "${vm['bridge']}" 2>&1 |grep "does not exist" |wc -c )
     if [ ! "$bridge_check" = "0" ]; then
-      verbose_message "Bridge device \"${vm['bridge']}\" does not exist" "warn"
+      warning_message "Bridge device \"${vm['bridge']}\" does not exist"
       do_exit
     fi
   fi
@@ -674,10 +695,10 @@ check_bridge () {
 
 check_image_exists () {
   if [ ! -f "${vm['releasedir']}/${vm['imagefile']}" ]; then
-    verbose_message "Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\" does not exist" "warn"
+    warning_message "Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\" does not exist"
     do_exit
   else
-    verbose_message "Found Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\"" "info"
+    information_message "Found Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\""
   fi
 }
 
@@ -685,7 +706,7 @@ check_image_exists () {
 
 create_disk () {
   if [ -f "${vm['disk']}" ]; then
-    verbose_message "VM disk file \"${vm['disk']}\" already exists" "warn"
+    warning_message "VM disk file \"${vm['disk']}\" already exists"
   else
     if [ "${options['backing']}" = "true" ]; then
       execute_command "qemu-img create -b ${vm['releasedir']}/${vm['imagefile']} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
@@ -779,7 +800,7 @@ check_vm_state () {
 
 check_vm_exists () {
   check_vm_name
-  verbose_message "Checking if VM \"${vm['name']}\" exists" "info"
+  information_message "Checking if VM \"${vm['name']}\" exists"
   if [ "${os['name']}" = "Linux" ]; then
     vm_check=$( sudo virsh list --all |grep -c " ${vm['name']} " )
   else
@@ -789,7 +810,7 @@ check_vm_exists () {
     vm['exists']="true"
   else
     vm['exists']="false"
-    verbose_message "VM \"${vm['name']}\" does not exist" "warn"
+    warning_message "VM \"${vm['name']}\" does not exist"
   fi
 }
 
@@ -844,7 +865,7 @@ connect_to_vm () {
 
 ssh_to_vm () {
   if [ "${vm['ip']}" = "" ]; then
-    verbose_message "No IP given to SSH to" "warn"
+    warning_message "No IP given to SSH to"
     do_exit
   else
     check_vm_state
@@ -866,11 +887,60 @@ inject_key () {
       if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
         execute_command "virt-customize -a ${vm['disk']} --ssh-inject ${vm['username']}:file:${vm['sshkeyfile']}" "linuxsu"
       else
-        verbose_message "VM disk \"${vm['disk']}\" does not exist" "warn"
+        warning_message "VM disk \"${vm['disk']}\" does not exist"
       fi
     else
-      verbose_message "Key file \"${vm['sshkeyfile'}\" does not exist" "warn"
+      warning_message "Key file \"${vm['sshkeyfile'}\" does not exist"
     fi
+  fi
+}
+
+# List snapshots
+
+list_snapshots () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ]; then
+    execute_command "virsh snapshot-list ${vm['name']}" "linuxsu"
+  fi
+
+}
+
+# Create snaphot
+
+create_snapshot () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${vm['snapshot']}" = "" ] || [ "${vm['description']}" = "" ]; then
+      datestr=$( date )
+      suffix=$( date -d "${datestr}" +%Y%M%d%H%M%S )
+      if [ "${vm['snapshot']}" = "" ]; then
+        vm['snapshot']="${vm['name']}_snap_${suffix}"
+      fi
+      if [ "${vm['description']}" = "" ]; then
+        vm['description']="Snapshot ${suffix}"
+      fi
+    fi
+    if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
+      execute_command "virsh snapshot-create-as --domain ${vm['name']} --name \"${vm['snapshot']}\" --description \"${vm['description']}\"" "linuxsu"
+    fi
+  fi
+}
+
+# Restore snapshot
+
+restore_snapshot () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ]; then
+    execute_command "virsh snapshot-revert ${vm['name']} \"${vm['snapshot']}\"" "linuxsu" 
+  fi
+}
+
+# Delete snapshot
+
+delete_snapshot () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ]; then
+    execute_command "virsh snapshot-delete ${vm['name']} \"${vm['snapshot']}\"" "linuxsu" 
   fi
 }
 
@@ -895,10 +965,10 @@ upload_file () {
           run_command "${command}"
         fi
       else
-        verbose_message "VM disk \"${vm['disk']}\" does not exist" "warn"
+        warning_message "VM disk \"${vm['disk']}\" does not exist"
       fi
     else
-      verbose_message "Source file \"${vm['sourcefile']}\" does not exist" "warn"
+      warning_message "Source file \"${vm['sourcefile']}\" does not exist"
     fi
   fi
 }
@@ -915,7 +985,7 @@ run_command () {
       fi
       execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
     else
-      verbose_message "VM disk \"${vm['disk']}\" does not exist" "warn"
+      warning_message "VM disk \"${vm['disk']}\" does not exist"
     fi
   fi
 }
@@ -935,7 +1005,7 @@ customize_vm () {
     if [ -f "${vm['postscript']}" ] || [ "${options['dryrun']}" = "true" ]; then
       execute_command "virt-customize " "linuxsu"
     else
-      verbose_message "Post install script \"${vm['postscript']}\" does not exist" "warn"
+      warning_message "Post install script \"${vm['postscript']}\" does not exist"
     fi
   fi
 }
@@ -946,7 +1016,7 @@ print_contents () {
   file_name="$1"
   if [ -f "${file_name}" ]; then
     if [ "${options['verbose']}" = "true" ]; then
-      verbose_message "Contents of file \"${file_name}\"" "info"
+      information_message "Contents of file \"${file_name}\""
       cat "${file_name}"
     fi
   fi
@@ -1067,7 +1137,7 @@ configure_network () {
       command="echo \"nameserver ${vm['dns']}\" > /etc/resolv.conf"
       run_command "${command}"
     else
-      verbose_message "VM \"${vm['name']}\" does not exist" "warn"
+      warning_message "VM \"${vm['name']}\" does not exist"
     fi
   else
     echo "ethernets:"                                    > "${temp_file}"
@@ -1129,10 +1199,10 @@ install_packages () {
     if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
       execute_command "virt-customize -a ${vm['disk']} --install \"${vm['packages']}\"" "linuxsu"
     else
-      verbose_message "VM disk \"${vm['disk']}\" does not exist" "warn"
+      warning_message "VM disk \"${vm['disk']}\" does not exist"
     fi
   else
-    verbose_message "VM \"${vm['name']}\" does not exist" "warn"
+    warning_message "VM \"${vm['name']}\" does not exist"
   fi
 }
 
@@ -1471,6 +1541,14 @@ process_actions () {
       # Create pool
       create_pool
       ;;
+    snap*|backup)    # action
+      # Create snapshot
+      create_snapshot
+      ;;
+    deletesnap*)     # action
+      # Delete snapshot
+      delete_snapshot
+      ;;
     createvm)         # action
       # Create VM
       get_image
@@ -1528,14 +1606,22 @@ process_actions () {
       # List nets
       list_nets
       ;;
+    listsnap*)        # action
+      # List snapshots
+      list_snapshots
+      ;;
     *password*)       # action
       # Set password for user in VM image
       set_password
       ;;
-    restart*|reboot*)     # action
+    restart*|reboot*) # action
       # Restart VM
       stop_vm
       start_vm
+      ;;
+    restore*)         # action
+      # Restore snapshot
+      restore_snapshot
       ;;
     run*)             # action
       # Run command in VM image
@@ -1821,6 +1907,12 @@ while test $# -gt 0; do
       vm['destfile']="$2"
       shift 2
       ;;
+    --desc*)              # switch
+      # description of snapshot
+      check_value "$1" "$2"
+      vm['description']="$2"
+      shift 2
+      ;;
     --disk)               # switch
       # VM disk file
       check_value "$1" "$2"
@@ -2094,6 +2186,12 @@ while test $# -gt 0; do
       # Run shellcheck on script
       options['shellcheck']="true"
       shift
+      ;;
+    --snap*)              # switch
+      # Name of snapshot
+      check_value "$1" "$2"
+      vm['snapshot']="$2"
+      shift 2
       ;;
     --source*|--input*)   # switch
       # Source file to copy into VM disk

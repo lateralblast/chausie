@@ -196,3 +196,7 @@
 # Added reset before console command to deal with terminal issues
 # 0.9.8: Mon Aug  4 09:47:01 PM AEST 2025
 # Added reset VM function and updated README
+# 0.9.9: Tue Aug  5 12:41:40 AM AEST 2025
+# Added functions to create, restore and destroy snapshots
+# 1.0.0: Tue Aug  5 12:50:01 AM AEST 2025
+# Added seperate function for warning message
