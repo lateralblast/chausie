@@ -188,3 +188,5 @@
 # Added secureboot handling
 # 0.9.4: Mon Aug  4 02:57:01 PM AEST 2025
 # Added support for multiple IPs and DNS
+# 0.9.4: Mon Aug  4 03:34:13 PM AEST 2025
+# Fixed shell for Ubuntu 18.04
