@@ -186,3 +186,5 @@
 # Improvements
 # 0.9.3: Fri Aug  1 09:13:32 PM AEST 2025
 # Added secureboot handling
+# 0.9.4: Mon Aug  4 02:57:01 PM AEST 2025
+# Added support for multiple IPs and DNS

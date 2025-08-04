@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.3
+# Version:      0.9.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1024,12 +1024,32 @@ configure_network () {
       echo "    ${vm['netdev']}:"                           >> "${temp_file}"
       echo "      dhcp4: ${vm['dhcp']}"                     >> "${temp_file}"
       if [ "${vm['dhcp']}" = "false" ]; then
-        echo "      addresses: [${vm['ip']}/${vm['cidr']}]" >> "${temp_file}"
+        echo "      addresses:"                     
+        if [[ "${vm['ip']}" =~ "," ]]; then
+          IFS="," read -r -a array <<< "${vm['ip']}"
+          for vm_ip in "${array[@]}"; do
+            echo "        - ${vm_ip}/${vm['cidr']}"         >> "${temp_file}"
+          done
+        else
+          echo "        - ${vm['ip']}/${vm['cidr']}"        >> "${temp_file}"
+        fi
         echo "      nameservers:"                           >> "${temp_file}"
-        echo "        addresses: [${vm['dns']}]"            >> "${temp_file}"
-        echo "      routes:"                                >> "${temp_file}"
-        echo "      - to: default"                          >> "${temp_file}"
-        echo "        via: ${vm['gateway']}"                >> "${temp_file}"
+        echo "        addresses:"                           >> "${temp_file}"
+        if [[ "${vm['dns']}" =~ "," ]]; then
+          IFS="," read -r -a array <<< "${vm['dns']}"
+          for vm_dns in "${array[@]}"; do
+            echo "          - ${vm_dns}"                    >> "${temp_file}"
+          done
+        else
+          echo "          - ${vm['dns']}"                   >> "${temp_file}"
+        fi
+        if [ "${vm['majorrelease']}" -gt 22 ]; then
+          echo "      routes:"                              >> "${temp_file}"
+          echo "        - to: default"                      >> "${temp_file}"
+          echo "          via: ${vm['gateway']}"            >> "${temp_file}"
+        else
+          echo "      gateway4: ${vm['gateway']}"           >> "${temp_file}"
+        fi
       fi
       echo "  version: 2"                                   >> "${temp_file}"
       vm['sourcefile']="${temp_file}"
@@ -1048,24 +1068,44 @@ configure_network () {
     else
       verbose_message "VM \"${vm['name']}\" does not exist" "warn"
     fi
-   else
-     echo "ethernets:"                                       > "${temp_file}"
-     echo "  ${vm['netdev']}:"                              >> "${temp_file}"
-     echo "    dhcp4: ${vm['dhcp']}"                        >> "${temp_file}"
-     if [ "${vm['dhcp']}" = "false" ]; then
-       echo "    addresses: [${vm['ip']}/${vm['cidr']}]"    >> "${temp_file}"
-       echo "    nameservers:"                              >> "${temp_file}"
-       echo "      addresses: [${vm['dns']}]"               >> "${temp_file}"
-       echo "    routes:"                                   >> "${temp_file}"
-       echo "    - to: default"                             >> "${temp_file}"
-       echo "      via: ${vm['gateway']}"                   >> "${temp_file}"
-     fi
-     echo "version: 2"                                      >> "${temp_file}"
-     vm['sourcefile']="${temp_file}"
-     chmod 700 "${vm['sourcefile']}"
-     print_contents "${vm['sourcefile']}"
-     execute_command "cp ${vm['sourcefile']} ${vm['netcfg']}" "linuxsu"
-   fi
+  else
+    echo "ethernets:"                                       > "${temp_file}"
+    echo "  ${vm['netdev']}:"                              >> "${temp_file}"
+    echo "    dhcp4: ${vm['dhcp']}"                        >> "${temp_file}"
+    if [ "${vm['dhcp']}" = "false" ]; then
+      echo "    addresses:"                             >> "${temp_file}"
+      if [[ "${vm['ip']}" =~ "," ]]; then
+        IFS="," read -r -a array <<< "${vm['ip']}"
+        for vm_ip in "${array[@]}"; do
+          echo "      - ${vm_ip}/${vm['cidr']}"        >> "${temp_file}"
+        done
+      else
+        echo "      - ${vm['ip']}/${vm['cidr']}"        >> "${temp_file}"
+      fi
+      echo "    nameservers:"                              >> "${temp_file}"
+      echo "      addresses:"                           >> "${temp_file}"
+      if [[ "${vm['dns']}" =~ "," ]]; then
+        IFS="," read -r -a array <<< "${vm['dns']}"
+        for vm_dns in "${array[@]}"; do
+          echo "        - ${vm_dns}"                    >> "${temp_file}"
+        done
+      else
+        echo "        - ${vm['dns']}"                    >> "${temp_file}"
+      fi
+      if [ "${vm['majorrelease']}" -gt 22 ]; then
+        echo "    routes:"                                 >> "${temp_file}"
+        echo "      - to: default"                         >> "${temp_file}"
+        echo "        via: ${vm['gateway']}"               >> "${temp_file}"
+      else
+        echo "      gateway4: ${vm['gateway']}"            >> "${temp_file}"
+      fi
+    fi
+    echo "version: 2"                                      >> "${temp_file}"
+    vm['sourcefile']="${temp_file}"
+    chmod 700 "${vm['sourcefile']}"
+    print_contents "${vm['sourcefile']}"
+    execute_command "cp ${vm['sourcefile']} ${vm['netcfg']}" "linuxsu"
+  fi
 }
 
 # Set VM hostname
@@ -1390,6 +1430,8 @@ reset_defaults () {
     verbose_message "Seting DNS server to \"${vm['dns']}\""     "notice"
   fi
   create_libvirt_dir "${vm['releasedir']}"
+  vm['majorrelease']=$( echo "${vm['release']}" |cut -f1 -d. )
+  vm['minorrelease']=$( echo "${vm['release']}" |cut -f2 -d. )
 }
 
 # Process action
