@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.6
+# Version:      0.9.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -833,6 +833,7 @@ connect_to_vm () {
   check_vm_state
   if [ "${vm['exists']}" = "true" ]; then
     if [ "${vm[state]}" = "running" ]; then
+      reset
       command="virsh console ${vm['name']}"
       execute_command "${command}" "linuxsu"
     fi
@@ -1530,6 +1531,11 @@ process_actions () {
     *password*)       # action
       # Set password for user in VM image
       set_password
+      ;;
+    restart*|reboot*)     # action
+      # Restart VM
+      stop_vm
+      start_vm
       ;;
     run*)             # action
       # Run command in VM image

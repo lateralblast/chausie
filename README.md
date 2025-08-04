@@ -8,7 +8,7 @@ Cloud-Image Host Automation Utility and System Image Engine
 Version
 -------
 
-Current version 0.9.6
+Current version 0.9.8
 
 Prerequisites
 -------------
@@ -194,7 +194,7 @@ List Nets:
  default   inactive   no          yes
 ```
 
-Create VM with latest LTS cloud image:
+Create VM with latest LTS cloud image and default settings:
 
 ```
 ./chausie.sh --action createvm --name test
@@ -205,6 +205,12 @@ Creating domain...                                                              
 Domain creation completed.
 You can restart your domain by running:
   virsh --connect qemu:///system start test
+```
+
+Create a VM with default username and password, HWE kernel, static IP, and pass through PCI device from host: 
+
+```
+./chausie.sh --action createvm --ip 192.168.10.74 --cidr 22 --gateway 192.168.11.254 --size 50G --release 24.04 --hostname gpuvm04 --hostdevice "03:00.0" --options verbose,hwe
 ```
 
 Create default user (ubuntu), inject SSH keys, and add to sudoers:
@@ -237,8 +243,20 @@ Connect to VM via console:
 ./chausie.sh --action connect --name test
 ```
 
+Start VM and connect to VM in one command:
+
+```
+./chausie.sh --action startvm,connect --name test
+```
+
 Stop VM:
 
 ```
 ./chausie.sh --action stopvm --name test
+```
+
+Restart VM:
+
+```
+./chausie.sh --action restartvm --name test
 ```

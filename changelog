@@ -192,3 +192,7 @@
 # Fixed shell for Ubuntu 18.04
 # 0.9.6: Mon Aug  4 04:33:59 PM AEST 2025
 # Added support for zsh as a shell
+# 0.9.7: Mon Aug  4 05:58:35 PM AEST 2025
+# Added reset before console command to deal with terminal issues
+# 0.9.8: Mon Aug  4 09:47:01 PM AEST 2025
+# Added reset VM function and updated README
