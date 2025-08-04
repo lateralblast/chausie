@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      0.9.5
+# Version:      0.9.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1432,6 +1432,16 @@ reset_defaults () {
   create_libvirt_dir "${vm['releasedir']}"
   vm['majorrelease']=$( echo "${vm['release']}" |cut -f1 -d. )
   vm['minorrelease']=$( echo "${vm['release']}" |cut -f2 -d. )
+  if [[ ${vm['shell']} =~ zsh ]]; then
+    vm['packages']="${vm['packages']},zsh"
+  fi
+  if [[ ! ${vm['shell']} =~ bin ]]; then
+    if [[ ${vm['shell']} =~ zsh ]]; then
+      vm['shell']="/usr/bin/${vm['shell']}"
+    else
+      vm['shell']="/bin/${vm['shell']}"
+    fi
+  fi
 }
 
 # Process action
