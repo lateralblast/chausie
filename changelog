@@ -200,3 +200,9 @@
 # Added functions to create, restore and destroy snapshots
 # 1.0.0: Tue Aug  5 12:50:01 AM AEST 2025
 # Added seperate function for warning message
+# 1.0.1: Tue Aug  5 10:36:08 PM AEST 2025
+# Added runcmd section
+# 1.0.2: Tue Aug  5 11:07:04 PM AEST 2025
+# Adjusted warning_message routine
+# 1.0.3: Tue Aug  5 11:23:23 PM AEST 2025
+# Added suspend and resume functions

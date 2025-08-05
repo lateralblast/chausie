@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.0.0
+# Version:      1.0.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -346,10 +346,10 @@ get_cidr () {
 
 check_vm_name () {
   if [ "${vm['name']}" = "" ]; then
-    warning_message "VM name is not set"
+    information_message "VM name is not set"
     if [ ! "${vm['hostname']}" = "" ]; then
       vm['name']="${vm['hostname']}"
-      warning_message "Setting VM name to ${vm['name']}"
+      information_message "Setting VM name to ${vm['name']}"
     else
       do_exit
     fi
@@ -399,6 +399,7 @@ set_defaults () {
   vm['netcfg']=""
   vm['bridge']=""
   vm['kernel']="linux-generic"
+  vm['runcmd']="/usr/bin/systemctl set-default multi-user.target"
   vm['machine']=""
   vm['sudoers']=""
   vm['netmask']=""
@@ -496,7 +497,7 @@ set_defaults () {
 verbose_message () {
   message="$1"
   format="$2"
-  if [ "${options['verbose']}" = "true" ] || [ "${format}" = "verbose" ]; then
+  if [ "${options['verbose']}" = "true" ] || [[ "${format}" =~ verbose ]]; then
     case "${format}" in
       exec*)
         echo "Executing:    ${message}"
@@ -524,7 +525,7 @@ verbose_message () {
 
 warning_message () {
   message="$1"
-  verbose_message "${message}" "warn"
+  verbose_message "${message}" "warn-verbose"
 }
 
 # Notice message
@@ -836,6 +837,30 @@ start_vm () {
   fi
 }
 
+# Suspend VM
+
+suspend_vm () {
+  check_vm_state
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${vm[state]}" = "running" ]; then
+      command="virsh suspend ${vm['name']}"
+      execute_command "${command}" "linuxsu"
+    fi
+  fi
+}
+
+# Resume VM
+
+resume_vm () {
+  check_vm_state
+  if [ "${vm['exists']}" = "true" ]; then
+    if [ "${vm[state]}" = "paused" ]; then
+      command="virsh resume ${vm['name']}"
+      execute_command "${command}" "linuxsu"
+    fi
+  fi
+}
+
 # Stop VM
 
 stop_vm () {
@@ -1040,40 +1065,44 @@ configure_init () {
   temp_file="/tmp/cloud-init.cfg"
   mask_file="/tmp/cloud-init.cfg.masked"
   generate_crypt
-  echo "#cloud-config"                              |tee "${mask_file}"      > "${temp_file}"
-  echo "hostname: ${vm['hostname']}"                |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "groups:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - ${vm['groupname']}: ${vm['username']}"  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "users:"                                     |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - default"                                |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - name: ${vm['username']}"                |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    gecos: ${vm['gecos']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    primary_group: ${vm['groupname']}"      |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    groups: ${vm['groups']}"                |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    shell: ${vm['shell']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    passwd: \"#MASKED#\""                                           >> "${mask_file}"
-  echo "    passwd: \"${vm['crypt']}\""                                     >> "${temp_file}"
+  echo "#cloud-config"                                |tee "${mask_file}"      > "${temp_file}"
+  echo "hostname: ${vm['hostname']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "groups:"                                      |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - ${vm['groupname']}: ${vm['username']}"    |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "users:"                                       |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - default"                                  |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - name: ${vm['username']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    gecos: ${vm['gecos']}"                    |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    primary_group: ${vm['groupname']}"        |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    groups: ${vm['groups']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    shell: ${vm['shell']}"                    |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    passwd: \"#MASKED#\""                                             >> "${mask_file}"
+  echo "    passwd: \"${vm['crypt']}\""                                       >> "${temp_file}"
   if [ ! "${vm['sshkey']}" = "" ]; then
-    echo "    ssh-authorized-keys:"                 |tee -a "${mask_file}"  >> "${temp_file}"
-    echo "      - \"#MASKED#\""                                             >> "${mask_file}"
-    echo "      - \"${vm['sshkey']}\""                                      >> "${temp_file}"
+    echo "    ssh_authorized_keys:"                   |tee -a "${mask_file}"  >> "${temp_file}"
+    echo "      - \"#MASKED#\""                                               >> "${mask_file}"
+    echo "      - \"${vm['sshkey']}\""                                        >> "${temp_file}"
   fi
-  echo "    sudo: ${vm['sudoers']}"                 |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    lock_passwd: ${vm['lock']}"             |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "packages:"                                  |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    sudo: ${vm['sudoers']}"                   |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    lock_passwd: ${vm['lock']}"               |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "packages:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
   if [[ "${vm['packages']}" =~ "," ]]; then
     IFS="," read -r -a array <<< "${vm['packages']}"
     for vm_package in "${array[@]}"; do
-      echo "  - ${vm_package}"                      |tee -a "${mask_file}"  >> "${temp_file}"
+      echo "  - ${vm_package}"                        |tee -a "${mask_file}"  >> "${temp_file}"
     done
   else
-    echo "  - ${vm['packages']}"                    |tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - ${vm['packages']}"                      |tee -a "${mask_file}"  >> "${temp_file}"
   fi
-  echo "growpart:"                                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  mode: auto"                               |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  devices: ['/']"                           |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "power_state:"                               |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  mode: ${vm['power']}"                     |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "growpart:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  mode: auto"                                 |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  devices: ['/']"                             |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "power_state:"                                 |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  mode: ${vm['power']}"                       |tee -a "${mask_file}"  >> "${temp_file}"
+  if [ ! "${vm['runcmd']}" = "" ]; then
+    echo "runcmd:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - [ sh, \"${vm['runcmd']}\" ]"            |tee -a "${mask_file}"  >> "${temp_file}"
+  fi
   if [ "${options['mask']}" = "true" ]; then
     print_contents "${mask_file}"
   else
@@ -1623,9 +1652,13 @@ process_actions () {
       # Restore snapshot
       restore_snapshot
       ;;
-    run*)             # action
+    resume*)          # action
+      # Resume VM
+      resume_vm
+      ;;
+    exec)             # action
       # Run command in VM image
-      run_command "${command}"
+      run_command "${vm['command']}"
       ;;
     ssh)              # action
       # SSH to VM
@@ -1650,6 +1683,10 @@ process_actions () {
     sudo*)            # action
       # Add sudoers entry to VM image
       add_sudoers
+      ;;
+    suspend*)         # action
+      # Suspend VM
+      suspend_vm
       ;;
     *user*)           # action
       # Add user to VM
@@ -1936,6 +1973,12 @@ while test $# -gt 0; do
       options['dryrun']="true"
       shift
       ;;
+    --exec)               # switch
+      # Command to run in VM image
+      check_value "$1" "$2"
+      vm['command']="$2"
+      shift 2
+      ;;
     --features)           # switch
       # VM features
       check_value "$1" "$2"
@@ -2164,10 +2207,10 @@ while test $# -gt 0; do
       vm['ram']="$2"
       shift 2
       ;;
-    --run*)               # swith
-      # Command to run in VM image
+    --runcmd)             # switch
+      # Run command during install
       check_value "$1" "$2"
-      command="$2"
+      vm['runcmd']="$2"
       shift 2
       ;;
     --shell)              # switch
