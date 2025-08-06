@@ -206,3 +206,5 @@
 # Adjusted warning_message routine
 # 1.0.3: Tue Aug  5 11:23:23 PM AEST 2025
 # Added suspend and resume functions
+# 1.0.4: Wed Aug  6 04:44:30 PM AEST 2025
+# Added code to reboot/bounce VM
