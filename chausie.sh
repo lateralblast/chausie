@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.1.2
+# Version:      1.1.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -929,7 +929,7 @@ process_device () {
   else
     pci_ids="${pci_ids},${pci_id}"
   fi
-  module_list=$( lspci -ks "${vm_device}" | grep modules | cut -f2 -d: | sed "s/ //g" )
+  module_list=$( lspci -ks "${vm_device}" | grep -E "modules|driver" | cut -f2 -d: | sed "s/ //g" )
   if [[ "${module_list}" =~ , ]]; then
     IFS="," read -r -a array <<< "${module_list}"
     for module_name in "${array[@]}"; do
@@ -974,6 +974,10 @@ process_devices () {
 # Passthrough device
 
 passthrough_device () {
+  if [ "${vm['hostdevice']}" = "" ] && [ "" ]; then
+    warning_message "No host device or device type specified"
+    do_exit
+  fi
   if [ ! -f "/etc/modules-load.d/vfio-pci.conf" ]; then
     for module_name in vfio vfio_iommu_type1 vfio_pci kvm kvm_intel; do
       execute_command "echo \"${module_name}\" | sudo tee -a /etc/modules-load.d/vfio-pci.conf"
