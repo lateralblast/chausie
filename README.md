@@ -279,8 +279,14 @@ Restore snapshot:
 ./chausie.sh --action restoresnap --snap test_snap_20251605001640 --hostname test
 ```
 
-Delete snapshotL
+Delete snapshot:
 
 ```
 ./chausie.sh --action deletesnap --snap test_snap_20251605001640 --hostname test
+```
+
+Configure passthrough for host device 04:00.0:
+
+```
+./chausie.sh --action passthrough --device "04:00.0"
 ```
