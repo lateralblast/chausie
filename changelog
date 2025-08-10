@@ -208,3 +208,19 @@
 # Added suspend and resume functions
 # 1.0.4: Wed Aug  6 04:44:30 PM AEST 2025
 # Added code to reboot/bounce VM
+# 1.0.5: Wed Aug  6 05:45:29 PM AEST 2025
+# Added destroy
+# 1.0.6: Wed Aug  6 11:57:28 PM AEST 2025
+# Initial code for passthrough configuration
+# 1.0.7: Fri Aug  8 05:46:07 PM AEST 2025
+# Added handling for development releases
+# 1.0.8: Sun Aug 10 12:54:25 PM AEST 2025
+# Added halt action to shutdown
+# 1.0.9: Sun Aug 10 01:01:02 PM AEST 2025
+# Added 2 second sleep between multiple actions
+# 1.1.0: Sun Aug 10 01:04:24 PM AEST 2025
+# Added code to change permissions on config files 
+# 1.1.1: Sun Aug 10 03:52:49 PM AEST 2025
+# Updated passthrough commands to run through execute_command
+# 1.1.2: Sun Aug 10 04:03:03 PM AEST 2025
+# Added config switch

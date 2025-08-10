@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.0.4
+# Version:      1.1.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -31,7 +31,7 @@ declare -A defaults
 # Set/get some environment parameters
 
 os['name']=$( uname )
-os['arch']=$( uname -m |sed "s/aarch64/arm64/g" |sed "s/x86_64/amd64/g")
+os['arch']=$( uname -m | sed "s/aarch64/arm64/g" | sed "s/x86_64/amd64/g")
 os['user']=$( whoami )
 os['home']="$HOME"
 os['group']=$( id -gn )
@@ -47,7 +47,7 @@ export LIBGUESTFS_BACKEND=direct
 # Print help
 
 print_help () {
-  script['help']=$( grep -A1 "# switch" "${script['file']}" |sed "s/^--//g" |sed "s/# switch//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" | sed "/^\s*$/d" )
+  script['help']=$( grep -A1 "# switch" "${script['file']}" | sed "s/^--//g" | sed "s/# switch//g" | tr -s " " | grep -Ev "=|echo" | sed "s/#/ /g" | sed "/^\s*$/d" )
   echo "Usage: ${script['bin']} [OPTIONS...]"
   echo "-----"
   echo "${script['help']}"
@@ -64,7 +64,7 @@ fi
 # Print actions
 
 print_actions () {
-  script['actions']=$( grep -A1 "# action" "${script['file']}" |sed "s/^--//g" |sed "s/# action//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" |sed "/^\s*$/d" )
+  script['actions']=$( grep -A1 "# action" "${script['file']}" | sed "s/^--//g" | sed "s/# action//g" | tr -s " " | grep -Ev "=|echo" | sed "s/#/ /g" | sed "/^\s*$/d" )
   echo "Actions:"
   echo "-------"
   echo "${script['actions']}"
@@ -74,7 +74,7 @@ print_actions () {
 # Print options
 
 print_options () {
-  script['options']=$( grep -A1 "# option" "${script['file']}" |sed "s/^--//g" |sed "s/# option//g" | tr -s " " |grep -Ev "=|echo" |sed "s/#/ /g" |sed "/^\s*$/d" )
+  script['options']=$( grep -A1 "# option" "${script['file']}" | sed "s/^--//g" | sed "s/# option//g" | tr -s " " | grep -Ev "=|echo" | sed "s/#/ /g" | sed "/^\s*$/d" )
   echo "Options:"
   echo "-------"
   echo "${script['options']}"
@@ -138,7 +138,7 @@ check_value () {
 
 check_packages () {
   for package in ${os['requiredpackages']}; do
-    package_check=$( echo "${os['installedpackages']}" |grep -c "^${package}$" )
+    package_check=$( echo "${os['installedpackages']}" | grep -c "^${package}$" )
     if [ "${package_check}" = "0" ]; then
       if [ "${os['name']}" = "Darwin" ]; then
         execute_command "brew install ${package}"       ""
@@ -156,6 +156,142 @@ check_shellcheck () {
   if [ ! "${bin_test}" = "0" ]; then
     shellcheck "${script['file']}"
   fi
+}
+
+# Get Codename from release
+
+get_codename_from_release () {
+  case "${vm['release']}" in
+    "4.20")
+      vm['codename']="warty"
+      ;;
+    "5.04")
+      vm['codename']="hoary"
+      ;;
+    "5.10")
+      vm['codename']="breezy"
+      ;;
+    "6.04")
+      vm['codename']="dapper"
+      ;;
+    "6.10")
+      vm['codename']="edgy"
+      ;;
+    "7.05")
+      vm['codename']="feisty"
+      ;;
+    "7.10")
+      vm['codename']="gutsy"
+      ;;
+    "8.04")
+      vm['codename']="hardy"
+      ;;
+    "8.10")
+      vm['codename']="intrepid"
+      ;;
+    "9.04")
+      vm['codename']="jaunty"
+      ;;
+    "9.10")
+      vm['codename']="karmic"
+      ;;
+    "10.04")
+      vm['codename']="lucid"
+      ;;
+    "10.10")
+      vm['codename']="maverick"
+      ;;
+    "11.04")
+      vm['codename']="natty"
+      ;;
+    "11.10")
+      vm['codename']="oneiric"
+      ;;
+    "12.04")
+      vm['codename']="precise"
+      ;;
+    "12.10")
+      vm['codename']="quantal"
+      ;;
+    "13.04")
+      vm['codename']="raring"
+      ;;
+    "13.10")
+      vm['codename']="saucy"
+      ;;
+    "14.04")
+      vm['codename']="trusty"
+      ;;
+    "14.10")
+      vm['codename']="utopic"
+      ;;
+    "15.04")
+      vm['codename']="vivd"
+      ;;
+    "15.10")
+      vm['codename']="wily"
+      ;;
+    "16.04")
+      vm['codename']="xenial"
+      ;;
+    "16.10")
+      vm['codename']="yakkety"
+      ;;
+    "17.04")
+      vm['codename']="zesty"
+      ;;
+    "17.10")
+      vm['codename']="artful"
+      ;;
+    "18.04")
+      vm['codename']="bioic"
+      ;;
+    "18.10")
+      vm['codename']="cosmic"
+      ;;
+    "19.04")
+      vm['codename']="disco"
+      ;;
+    "19.10")
+      vm['codename']="eoan"
+      ;;
+    "20.04")
+      vm['codename']="focal"
+      ;;
+    "20.10")
+      vm['codename']="groovy"
+      ;;
+    "21.04")
+      vm['codename']="hirsuite"
+      ;;
+    "21.10")
+      vm['codename']="impish"
+      ;;
+    "22.04")
+      vm['codename']="jammy"
+      ;;
+    "22.10")
+      vm['codename']="kinetic"
+      ;;
+    "23.04")
+      vm['codename']="lunar"
+      ;;
+    "23.10")
+      vm['codename']="mantic"
+      ;;
+    "24.04")
+      vm['codename']="noble"
+      ;;
+    "24.10")
+      vm['codename']="oracular"
+      ;;
+    "25.04")
+      vm['codename']="plucky"
+      ;;
+    "25.10")
+      vm['codename']="questing"
+      ;;
+  esac
 }
 
 # Get Release from Codename
@@ -298,14 +434,14 @@ get_release_from_codename () {
 
 get_dns () {
   if [ "${os['name']}" = "Darwin" ]; then
-    vm['dns']=$( scutil --dns | grep nameserver |head -1 |awk '{print $3}' )
+    vm['dns']=$( scutil --dns | grep nameserver | head -1 | awk '{print $3}' )
   else
-    vm['dns']=$( resolvectl 2> /dev/null |grep "DNS Servers" |head -1 |awk '{print $3}' )
+    vm['dns']=$( resolvectl 2> /dev/null | grep "DNS Servers" | head -1 | awk '{print $3}' )
     if [ "${vm['dns']}" = "" ]; then
-      vm['dns']=$( resolvectl 2> /dev/null |grep "Current DNS" |awk '{print $4}' )
+      vm['dns']=$( resolvectl 2> /dev/null | grep "Current DNS" | awk '{print $4}' )
     fi
     if [ "${vm['dns']}" = "" ]; then
-      vm['dns']=$( nslookup www.google.com |grep Server |awk '{print $2}' |head -1 )
+      vm['dns']=$( nslookup www.google.com | grep Server | awk '{print $2}' | head -1 )
     fi
   fi
 }
@@ -314,9 +450,9 @@ get_dns () {
 
 get_gateway () {
   if [ "${os['name']}" = "Darwin" ]; then
-    vm['gateway']=$( route -n get default |grep gateway |awk '{print $2}' )
+    vm['gateway']=$( route -n get default | grep gateway | awk '{print $2}' )
   else
-    vm['gateway']=$( ip r |grep default |awk '{print $3}' )
+    vm['gateway']=$( ip r | grep default | awk '{print $3}' )
   fi
 }
 
@@ -326,18 +462,18 @@ get_cidr () {
   if [ "${os['name']}" = "Darwin" ]; then
     bin_test=$( command -v ipcalc | grep -c ipcalc )
     if [ ! "${bin_test}" = "0" ]; then
-      interface=$( route -n get default |grep interface |awk '{print $2}' )
-      vm['netmask']=$( ifconfig "${interface}" |grep mask |awk '{print $4}' )
-      vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask |awk '{print $4}' )
+      interface=$( route -n get default | grep interface | awk '{print $2}' )
+      vm['netmask']=$( ifconfig "${interface}" | grep mask | awk '{print $4}' )
+      vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask | awk '{print $4}' )
     else
       warning_message "Tool ipcalc not found"
       vm['cidr']="24"
     fi
   else
-    vm['cidr']=$( ip r |grep link |grep "${vm['bridge']}" |awk '{print $1}' |cut -f2 -d/ |head -1 )
+    vm['cidr']=$( ip r | grep link | grep "${vm['bridge']}" | awk '{print $1}' | cut -f2 -d/ | head -1 )
     if [[ "${vm['cidr']}" =~ . ]] || [ "${vm['cidr']}" = "" ]; then
-      vm['netmask']=$( route -n |awk '{print $3}' |grep "^255" )
-      vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask |awk '{print $4}' )
+      vm['netmask']=$( route -n | awk '{print $3}' | grep "^255" )
+      vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask | awk '{print $4}' )
     fi
   fi
 }
@@ -435,6 +571,7 @@ set_defaults () {
   vm['hostdevice']=""
   vm['releasedir']=""
   vm['sshkeyfile']=""
+  vm['devrelease']="25.10"
   os['libvirtgroups']="kvm libvirt libvirt-qemu"
   options['hwe']="false"
   options['mask']="false"
@@ -477,7 +614,7 @@ set_defaults () {
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
     defaults['bridge']="en0"
   else
-    os['installedpackages']=$( dpkg -l |grep ^ii |awk '{print $2}' )
+    os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' )
     os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois"
     defaults['bridge']="br0"
   fi
@@ -589,7 +726,7 @@ check_config () {
     fi
     for group in ${os['libvirtgroups']}; do
       information_message "Checking user \"${os['user']}\" is a member of a group \"${group}\""
-      group_check=$( groups |grep -c "${group}" )
+      group_check=$( groups | grep -c "${group}" )
       if [ "${group_check}" = "0" ]; then
         notice_message  "Adding user \"${os['user']}\" to group \"${group}\""
         execute_command "usermod -a -G ${group} ${os['user']}" "su"
@@ -658,7 +795,7 @@ get_image () {
 
 create_pool () {
   create_libvirt_dir "${vm['pooldir']}"
-  pool_test=$( virsh pool-list |awk "{ print \$1 }" )
+  pool_test=$( virsh pool-list | awk "{ print \$1 }" )
   if [[ ! "$pool_test" =~ ${vm['poolname']} ]]; then
     execute_command "virsh pool-create-as --name ${vm['poolname']} --type dir --target ${vm['pooldir']} > /dev/null 2>&1" ""
     fix_libvirt_perms "${vm['pooldir']}"
@@ -671,7 +808,7 @@ create_pool () {
 # Delete Pool
 
 delete_pool () {
-  pool_test=$( virsh pool-list |awk "{ print \$1 }" )
+  pool_test=$( virsh pool-list | awk "{ print \$1 }" )
   if [[ "$pool_test" =~ ${vm['poolname']} ]]; then
     execute_command "virsh pool-destroy --pool ${vm['poolname']} > /dev/null 2>&1" ""
   else
@@ -684,7 +821,7 @@ delete_pool () {
 
 check_bridge () {
   if [ "${os['name']}" = "Linux" ]; then
-    bridge_check=$( ip link show "${vm['bridge']}" 2>&1 |grep "does not exist" |wc -c )
+    bridge_check=$( ip link show "${vm['bridge']}" 2>&1 | grep "does not exist" | wc -c )
     if [ ! "$bridge_check" = "0" ]; then
       warning_message "Bridge device \"${vm['bridge']}\" does not exist"
       do_exit
@@ -784,15 +921,99 @@ create_vm () {
   fi
 }
 
+process_device () {
+  vm_device="$1"
+  pci_id=$( sudo lspci -ns "${vm_device}" | awk '{print $3}' )
+  if [ "${pci_ids}" = "" ]; then
+    pci_ids="${pci_id}"
+  else
+    pci_ids="${pci_ids},${pci_id}"
+  fi
+  module_list=$( lspci -ks "${vm_device}" | grep modules | cut -f2 -d: | sed "s/ //g" )
+  if [[ "${module_list}" =~ , ]]; then
+    IFS="," read -r -a array <<< "${module_list}"
+    for module_name in "${array[@]}"; do
+      if [ ! -f "/etc/modules-load.d/${module_name}" ]; then
+        execute_command \"echo "blacklist ${module_name}\" | sudo tee -a /etc/modules-load.d/${module_name}"
+      fi
+    done
+  else
+    if [ ! -f "/etc/modules-load.d/${module_list}" ]; then
+      execute_command "echo \"blacklist ${module_list}\" | sudo tee -a /etc/modules-load.d/${module_list}"
+    fi
+  fi
+}
+
+# Process devices
+
+process_devices () {
+  if [[ ! ${vm['hostdevice']} =~ , ]]; then
+    process_device "${vm['hostdevice']}"
+  else
+    IFS="," read -r -a array <<< "${vm['hostdevice']}"
+    for vm_device in "${array[@]}"; do
+      process_device "${vm_device}"  
+    done
+    new_cmdline="intel_iommu=on iommu=pt intremap=no_x2apic_optout vfio-pci.ids=${pci_ids}"
+    old_cmdline=$( cat /etc/default/grub | grep ^GRUB_CMDLINE_LINUX | cut -f1 -d= | cut -f2 -d\" )
+    if [ "${old_cmdline}" = "" ]; then
+      new_line="GRUB_CMDLINE_LINUX=\"${new_cmdline}\""
+      execute_command "echo \"${new_line}\" | sudo tee -a /etc/default/grub"
+      sudo update-grub
+    else
+      if [[ ! "${old_cmdline}" =~ ${new_cmdline} ]]; then
+        new_line="GRUB_CMDLINE_LINUX=\"${old_cmdline} ${new_cmdline}\""
+        execute_command "echo \"${new_line}\" | sudo tee -a /etc/default/grub"
+        execute_command "sudo update-grub"
+      fi
+    fi
+  fi
+}
+
+
+# Passthrough device
+
+passthrough_device () {
+  if [ ! -f "/etc/modules-load.d/vfio-pci.conf" ]; then
+    for module_name in vfio vfio_iommu_type1 vfio_pci kvm kvm_intel; do
+      execute_command "echo \"${module_name}\" | sudo tee -a /etc/modules-load.d/vfio-pci.conf"
+    done
+  fi
+  if [ ! -f "/etc/modprobe.d/iommu_unsafe_interrupts.conf" ]; then
+    execute_command "echo \"options vfio_iommu_type1 allow_unsafe_interrupts=1\" | sudo tee -a /etc/modprobe.d/iommu_unsafe_interrupts.conf"
+  fi
+  if [ ! "${vm['hostdevice']}" = "" ]; then
+    process_devices 
+  else
+    if [ ! "${vm['devicetype']}" = "" ]; then
+      IFS="\n" read -r -a array < $( lspci | grep -i "${vm[devicetype]}" )
+      for vm_devicetype in "${array[@]}"; do
+        if [ "${vm[hostdevice]}" = "" ]; then
+          vm['hostdevice']="${vm_device}"
+        else
+          vm['hostdevice']="${vm['hostdevice']},${vm_device}"
+        fi
+      done
+      process_devices
+    else
+      warning_message "No passthrough device or type specified"
+    fi
+  fi
+  if [ ! -f "/etc/modprobe.d/vfio.conf" ]; then
+    vfio_line="options vfio-pci ids=${pci_ids} disable_vga=1"
+    execute_command "sudo echo \"${vfio_line}\" | sudo tee -a /etc/modprobe.d/vfio.conf"
+  fi
+}
+
 # Check VM state
 
 check_vm_state () {
   check_vm_exists
   if [ "${vm['exists']}" = "true" ]; then
     if [ "${os['name']}" = "Linux" ]; then
-      vm['state']=$( sudo virsh list --all |grep " ${vm['name']} " |awk '{ print $3 }' )
+      vm['state']=$( sudo virsh list --all | grep " ${vm['name']} " | awk '{ print $3 }' )
     else
-      vm['state']=$( virsh list --all |grep " ${vm['name']} " |awk '{ print $3 }' )
+      vm['state']=$( virsh list --all | grep " ${vm['name']} " | awk '{ print $3 }' )
     fi
   fi
 }
@@ -803,9 +1024,9 @@ check_vm_exists () {
   check_vm_name
   information_message "Checking if VM \"${vm['name']}\" exists"
   if [ "${os['name']}" = "Linux" ]; then
-    vm_check=$( sudo virsh list --all |grep -c " ${vm['name']} " )
+    vm_check=$( sudo virsh list --all | grep -c " ${vm['name']} " )
   else
-    vm_check=$( virsh list --all |grep -c " ${vm['name']} " )
+    vm_check=$( virsh list --all | grep -c " ${vm['name']} " )
   fi
   if [ "${vm_check}" -ne 0 ]; then
     vm['exists']="true"
@@ -825,25 +1046,15 @@ delete_vm () {
   fi
 }
 
-# Start VM
+# Control VM
 
-start_vm () {
+control_vm () {
+  action="$1"
+  state="$2"
   check_vm_state
   if [ "${vm['exists']}" = "true" ]; then
-    if [ ! "${vm[state]}" = "running" ]; then
-      command="virsh start ${vm['name']}"
-      execute_command "${command}" "linuxsu"
-    fi
-  fi
-}
-
-# Suspend VM
-
-suspend_vm () {
-  check_vm_state
-  if [ "${vm['exists']}" = "true" ]; then
-    if [ "${vm[state]}" = "running" ]; then
-      command="virsh suspend ${vm['name']}"
+    if [ "${vm[state]}" = "${state}" ]; then
+      command="virsh ${action} ${vm['name']}"
       execute_command "${command}" "linuxsu"
     fi
   fi
@@ -852,51 +1063,43 @@ suspend_vm () {
 # Resume VM
 
 resume_vm () {
-  check_vm_state
-  if [ "${vm['exists']}" = "true" ]; then
-    if [ "${vm[state]}" = "paused" ]; then
-      command="virsh resume ${vm['name']}"
-      execute_command "${command}" "linuxsu"
-    fi
-  fi
-}
-
-# Reboot VM
-
-
-reboot_vm () {
-  check_vm_state
-  if [ "${vm['exists']}" = "true" ]; then
-    if [ "${vm[state]}" = "running" ]; then
-      command="virsh reboot ${vm['name']}"
-      execute_command "${command}" "linuxsu"
-    fi
-  fi
+  control_vm "resume" "paused"
 }
 
 # Stop VM
 
 stop_vm () {
-  check_vm_state
-  if [ "${vm['exists']}" = "true" ]; then
-    if [ "${vm[state]}" = "running" ]; then
-      command="virsh shutdown ${vm['name']}"
-      execute_command "${command}" "linuxsu"
-    fi
-  fi
+  control_vm "shutdown" "running"
 }
 
 # Connect to VM
 
 connect_to_vm () {
-  check_vm_state
-  if [ "${vm['exists']}" = "true" ]; then
-    if [ "${vm[state]}" = "running" ]; then
-      reset
-      command="virsh console ${vm['name']}"
-      execute_command "${command}" "linuxsu"
-    fi
-  fi
+  control_vm "console" "running"
+}
+
+# Suspend VM
+
+suspend_vm () {
+  control_vm "suspend" "running"
+}
+
+# Reboot VM
+
+reboot_vm () {
+  control_vm "reboot" "running"
+}
+
+# Start VM
+
+start_vm () {
+  control_vm "start" "shut"
+}
+
+# Destroy VM
+
+destroy_vm () {
+  control_vm "destroy" "running"
 }
 
 # SSH to vm
@@ -1048,6 +1251,30 @@ customize_vm () {
   fi
 }
 
+# Show VM config
+
+show_vm_config () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
+    options['verbose']="true"
+    if [ "${vm['config']}" = "" ]; then
+      print_contents "${vm['initcfg']}"
+      print_contents "${vm['netcfg']}"
+    else
+      if [[ "${vm['config']}" =~ net ]]; then
+        print_contents "${vm['netcfg']}"
+      fi
+      if [[ "${vm['config']}" =~ cloud ]]; then
+        print_contents "${vm['netcfg']}"
+      fi
+      if [[ "${vm['config']}" =~ all ]]; then
+        print_contents "${vm['initcfg']}"
+        print_contents "${vm['netcfg']}"
+      fi
+    fi
+  fi  
+}
+
 # Print contents of file
 
 print_contents () {
@@ -1065,9 +1292,9 @@ print_contents () {
 generate_crypt () {
   if [ "${vm['crypt']}" = "" ]; then
     if [ "${os['name']}" = "Darwin" ]; then
-      vm['crypt']=$( echo -n "${vm['password']}" |openssl sha512 | awk '{ print $2 }' )
+      vm['crypt']=$( echo -n "${vm['password']}" | openssl sha512 | awk '{ print $2 }' )
     else
-      vm['crypt']=$( echo "${vm['password']}" |mkpasswd --method=SHA-512 --stdin )
+      vm['crypt']=$( echo "${vm['password']}" | mkpasswd --method=SHA-512 --stdin )
     fi
   fi
 }
@@ -1078,43 +1305,43 @@ configure_init () {
   temp_file="/tmp/cloud-init.cfg"
   mask_file="/tmp/cloud-init.cfg.masked"
   generate_crypt
-  echo "#cloud-config"                                |tee "${mask_file}"      > "${temp_file}"
-  echo "hostname: ${vm['hostname']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "groups:"                                      |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - ${vm['groupname']}: ${vm['username']}"    |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "users:"                                       |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - default"                                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - name: ${vm['username']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    gecos: ${vm['gecos']}"                    |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    primary_group: ${vm['groupname']}"        |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    groups: ${vm['groups']}"                  |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    shell: ${vm['shell']}"                    |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    passwd: \"#MASKED#\""                                             >> "${mask_file}"
-  echo "    passwd: \"${vm['crypt']}\""                                       >> "${temp_file}"
+  echo "#cloud-config"                                | tee "${mask_file}"      > "${temp_file}"
+  echo "hostname: ${vm['hostname']}"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "groups:"                                      | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - ${vm['groupname']}: ${vm['username']}"    | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "users:"                                       | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - default"                                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - name: ${vm['username']}"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    gecos: ${vm['gecos']}"                    | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    primary_group: ${vm['groupname']}"        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    groups: ${vm['groups']}"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    shell: ${vm['shell']}"                    | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    passwd: \"#MASKED#\""                                              >> "${mask_file}"
+  echo "    passwd: \"${vm['crypt']}\""                                        >> "${temp_file}"
   if [ ! "${vm['sshkey']}" = "" ]; then
-    echo "    ssh_authorized_keys:"                   |tee -a "${mask_file}"  >> "${temp_file}"
-    echo "      - \"#MASKED#\""                                               >> "${mask_file}"
-    echo "      - \"${vm['sshkey']}\""                                        >> "${temp_file}"
+    echo "    ssh_authorized_keys:"                   | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "      - \"#MASKED#\""                                                >> "${mask_file}"
+    echo "      - \"${vm['sshkey']}\""                                         >> "${temp_file}"
   fi
-  echo "    sudo: ${vm['sudoers']}"                   |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    lock_passwd: ${vm['lock']}"               |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "packages:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    sudo: ${vm['sudoers']}"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    lock_passwd: ${vm['lock']}"               | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "packages:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
   if [[ "${vm['packages']}" =~ "," ]]; then
     IFS="," read -r -a array <<< "${vm['packages']}"
     for vm_package in "${array[@]}"; do
-      echo "  - ${vm_package}"                        |tee -a "${mask_file}"  >> "${temp_file}"
+      echo "  - ${vm_package}"                        | tee -a "${mask_file}"  >> "${temp_file}"
     done
   else
-    echo "  - ${vm['packages']}"                      |tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - ${vm['packages']}"                      | tee -a "${mask_file}"  >> "${temp_file}"
   fi
-  echo "growpart:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  mode: auto"                                 |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  devices: ['/']"                             |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "power_state:"                                 |tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  mode: ${vm['power']}"                       |tee -a "${mask_file}"  >> "${temp_file}"
+  echo "growpart:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  mode: auto"                                 | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  devices: ['/']"                             | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "power_state:"                                 | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  mode: ${vm['power']}"                       | tee -a "${mask_file}"  >> "${temp_file}"
   if [ ! "${vm['runcmd']}" = "" ]; then
-    echo "runcmd:"                                    |tee -a "${mask_file}"  >> "${temp_file}"
-    echo "  - [ sh, \"${vm['runcmd']}\" ]"            |tee -a "${mask_file}"  >> "${temp_file}"
+    echo "runcmd:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - [ sh, \"${vm['runcmd']}\" ]"            | tee -a "${mask_file}"  >> "${temp_file}"
   fi
   if [ "${options['mask']}" = "true" ]; then
     print_contents "${mask_file}"
@@ -1122,6 +1349,7 @@ configure_init () {
     print_contents "${temp_file}"
   fi
   execute_command "cp ${temp_file} ${vm['initcfg']}" "linuxsu"
+  execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
 }
 
 # Configure network
@@ -1217,7 +1445,8 @@ configure_network () {
     vm['sourcefile']="${temp_file}"
     chmod 700 "${vm['sourcefile']}"
     print_contents "${vm['sourcefile']}"
-    execute_command "cp ${vm['sourcefile']} ${vm['netcfg']}" "linuxsu"
+    execute_command "cp ${vm['sourcefile']} ${vm['netcfg']}"  "linuxsu"
+    execute_command "chmod 644 ${vm['netcfg']}"               "linuxsu"
   fi
 }
 
@@ -1402,11 +1631,25 @@ reset_defaults () {
     verbose_message "Setting machine to \"${vm['machine']}\""       "notice"
   fi
   if [ "${vm['imagefile']}" = "" ]; then
-    vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
+    if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
+      if [ "${vm['codename']}" = "" ]; then
+        get_codename_from_release
+      fi
+      vm['imagefile']="${vm['codename']}-server-cloudimg-${os['arch']}.img"
+    else
+      vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
+    fi
   fi
   verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""   "notice"
   if [ "${vm['imageurl']}" = "" ]; then
-    vm['imageurl']="https://cloud-images.ubuntu.com/releases/${vm['release']}/release/${vm['imagefile']}"
+    if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
+      if [ "${vm['codename']}" = "" ]; then
+        get_codename_from_release
+      fi
+      vm['imageurl']="https://cloud-images.ubuntu.com/${vm['codename']}/current/${vm['imagefile']}"
+    else
+      vm['imageurl']="https://cloud-images.ubuntu.com/releases/${vm['release']}/release/${vm['imagefile']}"
+    fi
   fi
   verbose_message "Setting CI URL to \"${vm['imageurl']}\""         "notice"
   if [ "${os['name']}" = "Darwin" ]; then
@@ -1523,7 +1766,7 @@ reset_defaults () {
   fi
   verbose_message "Setting sudoers  to \"${vm['sudoers']}\""    "notice"
   if [ "${vm['sshkeyfile']}" = "" ]; then
-    vm['sshkeyfile']=$( find "${os['home']}/.ssh" -name "*.pub" |head -1 )
+    vm['sshkeyfile']=$( find "${os['home']}/.ssh" -name "*.pub" | head -1 )
   fi
   verbose_message "Setting key file to \"${vm['sshkeyfile']}\"" "notice"
   if [ "${vm['sshkey']}" = "" ]; then
@@ -1543,8 +1786,8 @@ reset_defaults () {
     verbose_message "Seting DNS server to \"${vm['dns']}\""     "notice"
   fi
   create_libvirt_dir "${vm['releasedir']}"
-  vm['majorrelease']=$( echo "${vm['release']}" |cut -f1 -d. )
-  vm['minorrelease']=$( echo "${vm['release']}" |cut -f2 -d. )
+  vm['majorrelease']=$( echo "${vm['release']}" | cut -f1 -d. )
+  vm['minorrelease']=$( echo "${vm['release']}" | cut -f2 -d. )
   if [[ ${vm['shell']} =~ zsh ]]; then
     vm['packages']="${vm['packages']},zsh"
   fi
@@ -1562,139 +1805,151 @@ reset_defaults () {
 process_actions () {
   action="$1"
   case "${action}" in
-    action|help)      # action
+    action|help)            # action
       # Print actions help
       print_usage "actions"
       exit
       ;;
-    *config)          # action
+    checkconfig)            # action
       # Check config
       check_config
       ;;
-    connect|console)  # action
+    connect|console)        # action
       # Connect to VM console
       connect_to_vm
       ;;
-    copy|upload)      # action
+    copy|upload)            # action
       # Copy file into VM image
       upload_file
       ;;
-    createpool)       # action
+    createpool)             # action
       # Create pool
       create_pool
       ;;
-    snap*|backup)    # action
+    snap*|backup)           # action
       # Create snapshot
       create_snapshot
       ;;
-    deletesnap*)     # action
+    deletesnap*)            # action
       # Delete snapshot
       delete_snapshot
       ;;
-    createvm)         # action
+    destroy*)               # action
+      # Destroy VM
+      destroy_vm
+      ;; 
+    createvm)               # action
       # Create VM
       get_image
       check_config
       create_pool
       create_vm
       ;;
-    *network*)        # action
+    *network*)              # action
       # Configure network
       configure_network
       ;;
-    customize|post*)  # action
+    customize|post*)        # action
       # Do postinstall config
       customize_vm
       ;;
-    deletepool)       # action
+    deletepool)             # action
       # Delete pool
       delete_pool
       ;;
-    deletevm)         # action
+    deletevm)               # action
       # Delete VM
       check_config
       delete_pool
       delete_vm
       ;;
-    getimage)         # action
+    getimage)               # action
       # Get image
       do_get_image="true"
       ;;
-    *group*)          # action
+    *group*)                # action
       # Add group to to VM image
       add_group
       ;;
-    *host*)
+    *host*)                 # action
       # Set hostname in a VM image
       set_hostname
       ;;
-    *inject*)         # action
+    *inject*)               # action
       # Inject SSH key into VM image
       inject_key
       ;;
-    install*)         # action
+    install*)               # action
       # Install packages in VM image
       install_packages
       ;;
-    listvm*)          # action
+    listvm*)                # action
       # List VMs
       list_vms
       ;;
-    listpool*)        # action
+    listpool*)              # action
       # List pools
       list_pools
       ;;
-    listnet*)         # action
+    listnet*)               # action
       # List nets
       list_nets
       ;;
-    listsnap*)        # action
+    listsnap*)              # action
       # List snapshots
       list_snapshots
       ;;
-    *password*)       # action
+    passth*)                # action
+      # Pass through device
+      passthrough_device
+      ;;
+    *password*)             # action
       # Set password for user in VM image
       set_password
       ;;
-    poke*)            # action
+    poke*)                  # action
       # Suspend and Unsuspend VM
       suspend_vm
       resume_vm
       ;;
-    reboot*|bounce*)  # action
+    reboot*|bounce*)        # action
       # Reboot VM
       reboot_vm
       ;;
-    restart*|reboot*) # action
+    restart*|reboot*)       # action
       # Restart VM
       stop_vm
       start_vm
       ;;
-    restore*)         # action
+    restore*)               # action
       # Restore snapshot
       restore_snapshot
       ;;
-    resume*)          # action
+    resume*)                # action
       # Resume VM
       resume_vm
       ;;
-    exec)             # action
+    exec)                   # action
       # Run command in VM image
       run_command "${vm['command']}"
       ;;
-    ssh)              # action
+    ssh)                    # action
       # SSH to VM
       ssh_to_vm
       ;;
-    shellcheck)       # action
+    shellcheck)             # action
       # Check script with shellcheck
       options['shellcheck']="true"
       ;;
-    shutdown*|stop*)  # action
+    showconfig)             # action
+      # Show VM config
+      show_vm_config
+      ;;
+    shutdown*|stop*|halt*)  # action
       # Stop VM
       stop_vm
       ;;
-    start*|boot*)     # action
+    start*|boot*)           # action
       # Start VM
       start_vm
       ;;
@@ -1702,19 +1957,19 @@ process_actions () {
       # Generate root SSH keys for SSH server
       create_keys
       ;;
-    sudo*)            # action
+    sudo*)                  # action
       # Add sudoers entry to VM image
       add_sudoers
       ;;
-    suspend*)         # action
+    suspend*)               # action
       # Suspend VM
       suspend_vm
       ;;
-    *user*)           # action
+    *user*)                 # action
       # Add user to VM
       add_user
       ;;
-    version)          # action
+    version)                # action
       # Print version
       print_version
       exit
@@ -1888,429 +2143,441 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action*)             # switch
+    --action*)              # switch
       # Action to perform (e.g. createvm,deletevm)
       check_value "$1" "$2"
       actions="$2"
       options['actions']="true"
       shift 2
       ;;
-    --arch)               # switch
+    --arch)                 # switch
       # Specify architecture
       check_value "$1" "$2"
       vm['arch']="$2"
       shift 2
       ;;
-    --boot*)              # switch
+    --boot*)                # switch
       # VM boot type (e.g. UEFI)
       check_value "$1" "$2"
       vm['boot']="$2"
       shift 2
       ;;
-    --bridge)             # switch
+    --bridge)               # switch
       # VM network bridge
       check_value "$1" "$2"
       vm['bridge']="$2"
       shift 2
       ;;
-    --cdrom)              # switch
+    --cdrom)                # switch
       # VM localds cdrom
       check_value "$1" "$2"
       vm['cdrom']="$2"
       shift 2
       ;;
-    --cidr)               # switch
+    --cidr)                 # switch
       # VM CIDR
       check_value "$1" "$2"
       vm['cidr']="$2"
       shift 2
       ;;
-    --cloud*)              # switch
+    --config)               # switch
+      # VM Config file to disply
+      check_value "$1" "$2"
+      vm['config']="$2"
+      shift 2
+      ;;
+    --cloud*)               # switch
       # VM cloud-init config
       check_value "$1" "$2"
       vm['initcfg']="$2"
       shift 2
       ;;
-    --*codename)           # switch
+    --*codename)            # switch
       # VM cloud-init config
       check_value "$1" "$2"
       vm['codename']="$2"
       shift 2
       ;;
-    --cpus)               # switch
+    --cpus)                 # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm['cpus']="$2"
       shift 2
       ;;
-    --cputype)            # switch
+    --cputype)              # switch
       # Type of CPU within VM
       check_value "$1" "$2"
       vm['cputype']="$2"
       shift 2
       ;;
-    --crypt)              # switch
+    --crypt)                # switch
       # VM password crypt
       check_value "$1" "$2"
       vm['crypt']="$2"
       shift 2
       ;;
-    --debug)              # switch
+    --debug)                # switch
       # Run in debug mode
       options['debug']="true"
       shift
       ;;
-    --dest*)              # switch
+    --dest*)                # switch
       # Destination of file to copy into VM disk
       check_value "$1" "$2"
       vm['destfile']="$2"
       shift 2
       ;;
-    --desc*)              # switch
+    --desc*)                # switch
       # description of snapshot
       check_value "$1" "$2"
       vm['description']="$2"
       shift 2
       ;;
-    --disk)               # switch
+    --disk)                 # switch
       # VM disk file
       check_value "$1" "$2"
       vm['disk']="$2"
       shift 2
       ;;
-    --dns)                # switch
+    --dns)                  # switch
       # VM DNS server
       check_value "$1" "$2"
       vm['dns']="$2"
       shift 2
       ;;
-    --domain*)            # switch
+    --domain*)              # switch
       # VM domainname
       check_value "$1" "$2"
       vm['domain']="$2"
       shift 2
       ;;
-    --dryrun)             # switch
+    --dryrun)               # switch
       # Run in dryrun mode
       options['dryrun']="true"
       shift
       ;;
-    --exec)               # switch
+    --exec)                 # switch
       # Command to run in VM image
       check_value "$1" "$2"
       vm['command']="$2"
       shift 2
       ;;
-    --features)           # switch
+    --features)             # switch
       # VM features
       check_value "$1" "$2"
       vm['features']="$2"
       shift 2
       ;;
-    --filegroup)          # switch
+    --filegroup)            # switch
       # Set group of a file within VM image
       check_value "$1" "$2"
       vm['filegroup']="$2"
       shift 2
       ;;
-    --fileowner)          # switch
+    --fileowner)            # switch
       # Set owner of a file within VM image
       check_value "$1" "$2"
       vm['fileowner']="$2"
       shift 2
       ;;
-    --fileperms)          # switch
+    --fileperms)            # switch
       # Set permissions of a file within VM image
       check_value "$1" "$2"
       vm['fileperms']="$2"
       shift 2
       ;;
-    --force)              # switch
+    --force)                # switch
       # Force mode
       options['force']="true"
       shift
       ;;
-    --fqdn)               # switch
+    --fqdn)                 # switch
       # VM FQDN
       check_value "$1" "$2"
       vm['fqdn']="$2"
       shift 2
       ;;
-    --getimage)           # switch
+    --getimage)             # switch
       # Get Image
       get_image
       shift
       exit
       ;;
-    --gateway|--router)   # switch
+    --gateway|--router)     # switch
       # VM gateway address
       check_value "$1" "$2"
       vm['gateway']="$2"
       shift 2
       ;;
-    --graphics)           # switch
+    --graphics)             # switch
       # VM Graphics type
       check_value "$1" "$2"
       vm['graphics']="$2"
       shift 2
       ;;
-    --gecos)              # switch
+    --gecos)                # switch
       # GECOS field for user
       check_value "$1" "$2"
       vm['gecos']="$2"
       shift 2
       ;;
-    --groupid|--gid)      # switch
+    --groupid|--gid)        # switch
       # Group ID
       check_value "$1" "$2"
       vm['groupid']="$2"
       shift 2
       ;;
-    --group|--groupname)  # switch
+    --group|--groupname)    # switch
       # Primary Group a user is member of in VM image
       check_value "$1" "$2"
       vm['groupname']="$2"
       shift 2
       ;;
-    --groups)             # switch
+    --groups)               # switch
       # Additional groups a user is a member of in VM image
       check_value "$1" "$2"
       vm['groups']="$2"
       shift 2
       ;;
-    --help|--usage|-h)    # switch
+    --help|--usage|-h)      # switch
       # Print help
       print_usage "$2"
       shift 2
       exit
       ;;
-    --home*)              # switch
+    --home*)                # switch
       # Home directory
       check_value "$1" "$2"
       vm['homedir']="$2"
       shift 2
       ;;
-    --hostdevice)         # switch
+    --hostdevice|--device)  # switch
       # VM host device pass-through
       check_value "$1" "$2"
       vm['hostdevice']="$2"
       options['passthrough']="true"
       shift 2
       ;;
-    --hostname)           # switch
+    --hostname)             # switch
       # VM hostname
       check_value "$1" "$2"
       vm['hostname']="$2"
       shift 2
       ;;
-    --imagedir)           # switch
+    --imagedir)             # switch
       # Image directory
       check_value "$1" "$2"
       vm['imagedir']="$2"
       shift 2
       ;;
-    --imagefile)          # switch
+    --imagefile)            # switch
       # Image file
       check_value "$1" "$2"
       vm['imagefile']="$2"
       shift 2
       ;;
-    --imageurl)           # switch
+    --imageurl)             # switch
       # Image URL
       check_value "$1" "$2"
       vm['imageurl']="$2"
       shift 2
       ;;
-    --ip*)                # switch
+    --ip*)                  # switch
       # VM IP address
       check_value "$1" "$2"
       vm['ip']="$2"
       shift 2
       ;;
-    --kernel*)            # switch
+    --kernel*)              # switch
       # VM kernel
       check_value "$1" "$2"
       vm['kernel']="$2"
       shift 2
       ;;
-    --mask)               # switch
+    --mask)                 # switch
       # Enable masking of password and ssh keys
       options['mask']="true"
       shift
       ;;
-    --name|--vmname)      # switch
+    --name|--vmname)        # switch
       # Name of VM
       check_value "$1" "$2"
       vm['name']="$2"
       shift 2
       ;;
-    --nettype)            # switch
+    --nettype)              # switch
       # Net type (e.g. bridge)
       check_value "$1" "$2"
       vm['nettype']="$2"
       shift 2
       ;;
-    --netbus|netdriver)   # switch
+    --netbus|netdriver)     # switch
       # Net bus/driver (e.g. virtio)
       check_value "$1" "$2"
       vm['netbus']="$2"
       shift 2
       ;;
-    --netc*|--networkc*)  # switch
+    --netc*|--networkc*)    # switch
       # VM network config file
       check_value "$1" "$2"
       vm['netcfg']="$2"
       shift 2
       ;;
-    --netdev|--nic)       # switch
+    --netdev|--nic)         # switch
       # VM network device (e.g. enp1s0)
       check_value "$1" "$2"
       vm['netdev']="$2"
       shift 2
       ;;
-    --option*)             # switch
+    --option*)              # switch
       # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
       options="$2"
       options['options']="true"
       shift 2
       ;;
-    --osvariant)          # switch
+    --osvariant)            # switch
       # Os variant
       check_value "$1" "$2"
       vm['osvariant']="$2"
       shift 2
       ;;
-    --osvers|--release)             # switch
+    --osvers|--release)     # switch
       # OS version of image
       check_value "$1" "$2"
       vm['release']="$2"
       shift 2
       ;;
-    --packages)           # switch
+    --packages)             # switch
       # Packages to install in VM
       check_value "$1" "$2"
       vm['packages']="$2"
       shift 2
       ;;
-    --password)           # switch
+    --password)             # switch
       # Password for user (e.g. root)
       check_value "$1" "$2"
       vm['password']="$2"
       shift 2
       ;;
-    --poolname)           # switch
+    --poolname)             # switch
       # Pool name
       check_value "$1" "$2"
       vm['poolname']="$2"
       shift 2
       ;;
-    --pooldir)            # switch
+    --pooldir)              # switch
       # Pool directory
       check_value "$1" "$2"
       vm['pooldir']="$2"
       shift 2
       ;;
-    --post*)              # switch
+    --post*)                # switch
       # Post install script
       check_value "$1" "$2"
       vm['postscript']="$2"
       shift 2
       ;;
-    --power*)             # switch
+    --power*)               # switch
       # VM power state
       check_value "$1" "$2"
       vm['power']="$2"
       shift 2
       ;;
-    --ram)                # switch
+    --ram)                  # switch
       # Amount of VM RAM
       check_value "$1" "$2"
       vm['ram']="$2"
       shift 2
       ;;
-    --runcmd)             # switch
+    --runcmd)               # switch
       # Run command during install
       check_value "$1" "$2"
       vm['runcmd']="$2"
       shift 2
       ;;
-    --shell)              # switch
+    --shell)                # switch
       # User shell in VM image
       check_value "$1" "$2"
       vm['shell']="$2"
       shift 2
       ;;
-    --size)               # switch
+    --size)                 # switch
       # Size of VM disk
       check_value "$1" "$2"
       vm['size']="$2"
       shift 2
       ;;
-    --shellcheck)         # switch
+    --shellcheck)           # switch
       # Run shellcheck on script
       options['shellcheck']="true"
       shift
       ;;
-    --snap*)              # switch
+    --snap*)                # switch
       # Name of snapshot
       check_value "$1" "$2"
       vm['snapshot']="$2"
       shift 2
       ;;
-    --source*|--input*)   # switch
+    --source*|--input*)     # switch
       # Source file to copy into VM disk
       check_value "$1" "$2"
       vm['sourcefile']="$2"
       shift 2
       ;;
-    --sshkey)             # switch
+    --sshkey)               # switch
       # SSH key
       check_value "$1" "$2"
       vm['sshkey']="$2"
       shift 2
       ;;
-    --sshkeyfile)             # switch
+    --sshkeyfile)           # switch
       # SSH key file
       check_value "$1" "$2"
       vm['sshkeyfile']="$2"
       shift 2
       ;;
-    --strict)             # switch
+    --strict)               # switch
       # Run in strict mode
       options['strict']="true"
       shift
       ;;
-    --sudoers)            # switch
+    --sudoers)              # switch
       # Sudoers entry
       check_value "$1" "$2"
       vm['sudoers']="$2"
       shift 2
       ;;
-    --userid|--uid)       # switch
+    --devicetype|--type)    # switch
+      # Device Type
+      check_value "$1" "$2"
+      vm['devicetype']="$2"
+      shift 2
+      ;;
+    --userid|--uid)         # switch
       # User ID
       check_value "$1" "$2"
       vm['userid']="$2"
       shift 2
       ;;
-    --user|--username)    # switch
+    --user|--username)      # switch
       # Username
       check_value "$1" "$2"
       vm['username']="$2"
       shift 2
       ;;
-    --verbose)            # switch
+    --verbose)              # switch
       # Run in verbose mode
       options['verbose']="true"
       shift
       ;;
-    --version|-V)         # switch
+    --version|-V)           # switch
       # Print version
       print_version
       shift
       exit
       ;;
-    --virtdir)            # switch
+    --virtdir)              # switch
       # VM/libvirt base directory
       check_value "$1" "$2"
       vm['virtdir']="$2"
@@ -2361,6 +2628,7 @@ if [ "${options['actions']}" = "true" ]; then
     IFS="," read -r -a array <<< "${actions}"
     for action in "${array[@]}"; do
       process_actions "${action}"
+      sleep 2
     done
   else
     process_actions "${actions}"
