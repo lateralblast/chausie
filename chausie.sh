@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.1.3
+# Version:      1.1.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -153,7 +153,7 @@ check_packages () {
 
 check_shellcheck () {
   bin_test=$( command -v shellcheck | grep -c shellcheck )
-  if [ ! "${bin_test}" = "0" ]; then
+  if [ ! "${bin_test}" -eq 0 ]; then
     shellcheck "${script['file']}"
   fi
 }
@@ -931,7 +931,7 @@ process_device () {
   fi
   module_list=$( lspci -ks "${vm_device}" | grep -E "modules|driver" | cut -f2 -d: | sed "s/ //g" )
   if [[ "${module_list}" =~ , ]]; then
-    IFS="," read -r -a array <<< "${module_list}"
+    IFS=',' read -r -a array <<< "${module_list}"
     for module_name in "${array[@]}"; do
       if [ ! -f "/etc/modules-load.d/${module_name}" ]; then
         execute_command \"echo "blacklist ${module_name}\" | sudo tee -a /etc/modules-load.d/${module_name}"
@@ -950,12 +950,12 @@ process_devices () {
   if [[ ! ${vm['hostdevice']} =~ , ]]; then
     process_device "${vm['hostdevice']}"
   else
-    IFS="," read -r -a array <<< "${vm['hostdevice']}"
+    IFS=',' read -r -a array <<< "${vm['hostdevice']}"
     for vm_device in "${array[@]}"; do
       process_device "${vm_device}"  
     done
     new_cmdline="intel_iommu=on iommu=pt intremap=no_x2apic_optout vfio-pci.ids=${pci_ids}"
-    old_cmdline=$( cat /etc/default/grub | grep ^GRUB_CMDLINE_LINUX | cut -f1 -d= | cut -f2 -d\" )
+    old_cmdline=$( grep "^GRUB_CMDLINE_LINUX" < "/etc/default/grub" | cut -f1 -d= | cut -f2 -d\" )
     if [ "${old_cmdline}" = "" ]; then
       new_line="GRUB_CMDLINE_LINUX=\"${new_cmdline}\""
       execute_command "echo \"${new_line}\" | sudo tee -a /etc/default/grub"
@@ -974,7 +974,7 @@ process_devices () {
 # Passthrough device
 
 passthrough_device () {
-  if [ "${vm['hostdevice']}" = "" ] && [ "" ]; then
+  if [ "${vm['hostdevice']}" = "" ] && [ "${vm['devicetype']}" ]; then
     warning_message "No host device or device type specified"
     do_exit
   fi
@@ -990,7 +990,7 @@ passthrough_device () {
     process_devices 
   else
     if [ ! "${vm['devicetype']}" = "" ]; then
-      IFS="\n" read -r -a array < $( lspci | grep -i "${vm[devicetype]}" )
+      IFS=$'\n' read -r -a array < <( lspci | grep -i "${vm[devicetype]}" )
       for vm_devicetype in "${array[@]}"; do
         if [ "${vm[hostdevice]}" = "" ]; then
           vm['hostdevice']="${vm_device}"
@@ -1331,7 +1331,7 @@ configure_init () {
   echo "    lock_passwd: ${vm['lock']}"               | tee -a "${mask_file}"  >> "${temp_file}"
   echo "packages:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
   if [[ "${vm['packages']}" =~ "," ]]; then
-    IFS="," read -r -a array <<< "${vm['packages']}"
+    IFS=',' read -r -a array <<< "${vm['packages']}"
     for vm_package in "${array[@]}"; do
       echo "  - ${vm_package}"                        | tee -a "${mask_file}"  >> "${temp_file}"
     done
@@ -1371,7 +1371,7 @@ configure_network () {
       if [ "${vm['dhcp']}" = "false" ]; then
         echo "      addresses:"                     
         if [[ "${vm['ip']}" =~ "," ]]; then
-          IFS="," read -r -a array <<< "${vm['ip']}"
+          IFS=',' read -r -a array <<< "${vm['ip']}"
           for vm_ip in "${array[@]}"; do
             echo "        - ${vm_ip}/${vm['cidr']}"     >> "${temp_file}"
           done
@@ -1381,7 +1381,7 @@ configure_network () {
         echo "      nameservers:"                       >> "${temp_file}"
         echo "        addresses:"                       >> "${temp_file}"
         if [[ "${vm['dns']}" =~ "," ]]; then
-          IFS="," read -r -a array <<< "${vm['dns']}"
+          IFS=',' read -r -a array <<< "${vm['dns']}"
           for vm_dns in "${array[@]}"; do
             echo "          - ${vm_dns}"                >> "${temp_file}"
           done
@@ -1420,7 +1420,7 @@ configure_network () {
     if [ "${vm['dhcp']}" = "false" ]; then
       echo "    addresses:"                             >> "${temp_file}"
       if [[ "${vm['ip']}" =~ "," ]]; then
-        IFS="," read -r -a array <<< "${vm['ip']}"
+        IFS=',' read -r -a array <<< "${vm['ip']}"
         for vm_ip in "${array[@]}"; do
           echo "      - ${vm_ip}/${vm['cidr']}"         >> "${temp_file}"
         done
@@ -1430,7 +1430,7 @@ configure_network () {
       echo "    nameservers:"                           >> "${temp_file}"
       echo "      addresses:"                           >> "${temp_file}"
       if [[ "${vm['dns']}" =~ "," ]]; then
-        IFS="," read -r -a array <<< "${vm['dns']}"
+        IFS=',' read -r -a array <<< "${vm['dns']}"
         for vm_dns in "${array[@]}"; do
           echo "        - ${vm_dns}"                    >> "${temp_file}"
         done
@@ -1658,14 +1658,14 @@ reset_defaults () {
   verbose_message "Setting CI URL to \"${vm['imageurl']}\""         "notice"
   if [ "${os['name']}" = "Darwin" ]; then
     os['brewdir']="/opt/homebrew/Cellar"
-    if [ ! -d "$os['brewdir']" ]; then
+    if [ ! -d "${os['brewdir']}" ]; then
       os['brewdir']="/usr/local/Cellar"
     fi
     verbose_message "Setting brew directory to \"${os['brewdir']}\""     "notice"
   fi
   if [ "${vm['virtdir']}" = "" ]; then
     if [ "${os['name']}" = "Darwin" ]; then
-      vm['virtdir']="$os['brewdir']/libvirt"
+      vm['virtdir']="${os['brewdir']}/libvirt"
     else
       vm['virtdir']="/var/lib/libvirt"
     fi
@@ -1916,7 +1916,7 @@ process_actions () {
       suspend_vm
       resume_vm
       ;;
-    reboot*|bounce*)        # action
+    bounce*)                # action
       # Reboot VM
       reboot_vm
       ;;
@@ -1943,7 +1943,8 @@ process_actions () {
       ;;
     shellcheck)             # action
       # Check script with shellcheck
-      options['shellcheck']="true"
+      check_shellcheck
+      exit
       ;;
     showconfig)             # action
       # Show VM config
@@ -2514,8 +2515,8 @@ while test $# -gt 0; do
       ;;
     --shellcheck)           # switch
       # Run shellcheck on script
-      options['shellcheck']="true"
-      shift
+      check_shellcheck
+      exit
       ;;
     --snap*)                # switch
       # Name of snapshot
@@ -2598,12 +2599,6 @@ while test $# -gt 0; do
   esac
 done
 
-
-if [ "${options['shellcheck']}" = "true" ]; then
-  check_shellcheck
-  exit
-fi
-
 # Reset default based on switches
 
 if [ ! "${vm['hostname']}" = "" ]; then
@@ -2616,7 +2611,7 @@ reset_defaults
 
 if [ "${options['options']}" = "true" ]; then
   if [[ "${options}" =~ , ]]; then
-    IFS="," read -r -a array <<< "${options}"
+    IFS=',' read -r -a array <<< "${options}"
     for option in "${array[@]}"; do
       process_options "${option}"
     done
@@ -2629,7 +2624,7 @@ fi
 
 if [ "${options['actions']}" = "true" ]; then
   if [[ "${actions}" =~ "," ]]; then
-    IFS="," read -r -a array <<< "${actions}"
+    IFS=',' read -r -a array <<< "${actions}"
     for action in "${array[@]}"; do
       process_actions "${action}"
       sleep 2
