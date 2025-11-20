@@ -22,7 +22,7 @@ Prerequisites
 
 Required packages:
 
-- libvirt
+- libvirt-clients
 - libosinfo-bin
 - libguestfs-tools
 - whois (mkpasswd)
