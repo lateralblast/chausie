@@ -1724,7 +1724,7 @@ reset_defaults () {
   fi
   verbose_message "Setting release directory to \"${vm['releasedir']}\""  "notice"
   if [ "${vm['osvariant']}" = "" ]; then
-    if [ "${vm['release']}" -ge 26 ]; then
+    if [ "${vm['release']}" = "26.04" ]; then
       vm['osvariant']="ubuntu25.10"
     else
       vm['osvariant']="ubuntu${vm['release']}"
