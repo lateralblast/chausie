@@ -85,7 +85,7 @@
 # 0.4.2: Sun  1 Sep 2024 18:31:50 AEST
 # Added code to install packages
 # 0.4.3: Sun  1 Sep 2024 22:34:45 AEST
-@ Added code to create users and groups
+# Added code to create users and groups
 # 0.4.4: Mon  2 Sep 2024 07:28:12 AEST
 # Added code to update sudoers
 # 0.4.5: Mon  2 Sep 2024 07:51:34 AEST
@@ -228,3 +228,13 @@
 # Improved passthrough module determination
 # 1.1.4: Sun Aug 10 05:47:15 PM AEST 2025
 # Fixes based on shellcheck
+# 1.1.5: Mon May 18 09:00:56 PM AEST 2026
+# Added checkconfig switch
+# 1.1.6: Mon May 18 09:02:56 PM AEST 2026
+# Added options_list array
+# 1.1.7: Mon May 18 09:04:22 PM AEST 2026
+# Added actions_list array
+# 1.1.8: Mon May 18 09:30:22 PM AEST 2026
+# Added Ubuntu 26.04 to default Ubuntu releases
+# 1.1.9: Tue 19 May 2026 15:21:20 AEST
+# Added separate actions to command line parsing section

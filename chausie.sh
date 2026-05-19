@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.1.4
+# Version:      1.1.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -27,6 +27,8 @@ declare -A cli
 declare -A script
 declare -A options
 declare -A defaults
+declare -a actions_list
+declare -a options_list
 
 # Set/get some environment parameters
 
@@ -291,6 +293,12 @@ get_codename_from_release () {
     "25.10")
       vm['codename']="questing"
       ;;
+    "26.04")
+      vm['codename']="resolute" 
+      ;;
+    "26.10")
+      vm['codename']="stonking" 
+      ;;
   esac
 }
 
@@ -426,6 +434,12 @@ get_release_from_codename () {
       ;;
     questing)
       vm['release']="25.10"
+      ;;
+    resolute)
+      vm['release']="26.04"
+      ;;
+    stonking)
+      vm['release']="26.10"
       ;;
   esac
 }
@@ -571,7 +585,7 @@ set_defaults () {
   vm['hostdevice']=""
   vm['releasedir']=""
   vm['sshkeyfile']=""
-  vm['devrelease']="25.10"
+  vm['devrelease']="26.10"
   os['libvirtgroups']="kvm libvirt libvirt-qemu"
   options['hwe']="false"
   options['mask']="false"
@@ -600,7 +614,7 @@ set_defaults () {
   defaults['userid']="1000"
   defaults['netdev']="enp1s0"
   defaults['netbus']="virtio"
-  defaults['release']="24.04"
+  defaults['release']="26.04"
   defaults['nettype']="bridge"
   defaults['groupid']="1000"
   defaults['sudoers']="ALL=(ALL) NOPASSWD:ALL"
@@ -1830,9 +1844,12 @@ process_actions () {
       # Create pool
       create_pool
       ;;
-    snap*|backup)           # action
-      # Create snapshot
-      create_snapshot
+    createvm)               # action
+      # Create VM
+      get_image
+      check_config
+      create_pool
+      create_vm
       ;;
     deletesnap*)            # action
       # Delete snapshot
@@ -1842,13 +1859,6 @@ process_actions () {
       # Destroy VM
       destroy_vm
       ;; 
-    createvm)               # action
-      # Create VM
-      get_image
-      check_config
-      create_pool
-      create_vm
-      ;;
     *network*)              # action
       # Configure network
       configure_network
@@ -1953,6 +1963,10 @@ process_actions () {
     shutdown*|stop*|halt*)  # action
       # Stop VM
       stop_vm
+      ;;
+    snap*|backup)           # action
+      # Create snapshot
+      create_snapshot
       ;;
     start*|boot*)           # action
       # Start VM
@@ -2148,441 +2162,604 @@ fi
 
 while test $# -gt 0; do
   case $1 in
-    --action*)              # switch
+    --action*)                # switch
       # Action to perform (e.g. createvm,deletevm)
       check_value "$1" "$2"
-      actions="$2"
-      options['actions']="true"
+      actions_list+=("$2")
       shift 2
       ;;
-    --arch)                 # switch
+    --adduser*)               # switch
+      # Add user to VM
+      actions_list+=("user")
+      shift
+      ;;
+    --addsudo*)               # switch
+      # Add sudo entry to VM
+      actions_list+=("sudo")
+      shift
+      ;;
+    --arch)                   # switch
       # Specify architecture
       check_value "$1" "$2"
       vm['arch']="$2"
       shift 2
       ;;
-    --boot*)                # switch
+    --boot*)                  # switch
       # VM boot type (e.g. UEFI)
       check_value "$1" "$2"
       vm['boot']="$2"
       shift 2
       ;;
-    --bridge)               # switch
+    --bounce*)                # switch
+      # Reboot VM
+      actions_list+=("bounce")
+      shift
+      ;;
+    --bridge)                 # switch
       # VM network bridge
       check_value "$1" "$2"
       vm['bridge']="$2"
       shift 2
       ;;
-    --cdrom)                # switch
+    --cdrom)                  # switch
       # VM localds cdrom
       check_value "$1" "$2"
       vm['cdrom']="$2"
       shift 2
       ;;
-    --cidr)                 # switch
+    --check*)                 # switch
+      # Check VM configuration
+      actions_list+=("checkconfig")
+      shift
+      ;;
+    --cidr)                   # switch
       # VM CIDR
       check_value "$1" "$2"
       vm['cidr']="$2"
       shift 2
       ;;
-    --config)               # switch
-      # VM Config file to disply
-      check_value "$1" "$2"
-      vm['config']="$2"
-      shift 2
-      ;;
-    --cloud*)               # switch
+    --cloud*)                 # switch
       # VM cloud-init config
       check_value "$1" "$2"
       vm['initcfg']="$2"
       shift 2
       ;;
-    --*codename)            # switch
-      # VM cloud-init config
-      check_value "$1" "$2"
-      vm['codename']="$2"
-      shift 2
-      ;;
-    --cpus)                 # switch
-      # Number of VM CPUs
-      check_value "$1" "$2"
-      vm['cpus']="$2"
-      shift 2
-      ;;
-    --cputype)              # switch
-      # Type of CPU within VM
-      check_value "$1" "$2"
-      vm['cputype']="$2"
-      shift 2
-      ;;
-    --crypt)                # switch
-      # VM password crypt
-      check_value "$1" "$2"
-      vm['crypt']="$2"
-      shift 2
-      ;;
-    --debug)                # switch
-      # Run in debug mode
-      options['debug']="true"
-      shift
-      ;;
-    --dest*)                # switch
-      # Destination of file to copy into VM disk
-      check_value "$1" "$2"
-      vm['destfile']="$2"
-      shift 2
-      ;;
-    --desc*)                # switch
-      # description of snapshot
-      check_value "$1" "$2"
-      vm['description']="$2"
-      shift 2
-      ;;
-    --disk)                 # switch
-      # VM disk file
-      check_value "$1" "$2"
-      vm['disk']="$2"
-      shift 2
-      ;;
-    --dns)                  # switch
-      # VM DNS server
-      check_value "$1" "$2"
-      vm['dns']="$2"
-      shift 2
-      ;;
-    --domain*)              # switch
-      # VM domainname
-      check_value "$1" "$2"
-      vm['domain']="$2"
-      shift 2
-      ;;
-    --dryrun)               # switch
-      # Run in dryrun mode
-      options['dryrun']="true"
-      shift
-      ;;
-    --exec)                 # switch
+    --command)                # switch
       # Command to run in VM image
       check_value "$1" "$2"
       vm['command']="$2"
       shift 2
       ;;
-    --features)             # switch
+    --config)                 # switch
+      # VM Config file to disply
+      check_value "$1" "$2"
+      vm['config']="$2"
+      shift 2
+      ;;
+    --*codename)              # switch
+      # VM cloud-init config
+      check_value "$1" "$2"
+      vm['codename']="$2"
+      shift 2
+      ;;
+    --console|--connect)      # switch
+      # Connect to VM console
+      actions_list+=("connect")
+      shift
+      ;;
+    --copy*|--cp|--upload*)   # switch
+      # Copy a file to the VM
+      actions_list+=("copy")
+      shift
+      ;;
+    --cpus)                   # switch
+      # Number of VM CPUs
+      check_value "$1" "$2"
+      vm['cpus']="$2"
+      shift 2
+      ;;
+    --cputype)                # switch
+      # Type of CPU within VM
+      check_value "$1" "$2"
+      vm['cputype']="$2"
+      shift 2
+      ;;
+    --creategroup)            # switch
+      # Create a new group
+      actions_list+=("creategroup")
+      shift
+      ;;
+    --createpool)             # switch
+      # Create VM pool 
+      actions_list+=("createpool")
+      shift
+      ;;
+    --createsnap|backup*)     # switch
+      # Create VM snapshot
+      actions_list+=("snapshot")
+      shift
+      ;;
+    --createvm)               # switch
+      # Create VM 
+      actions_list+=("createvm")
+      shift
+      ;;
+    --crypt)                  # switch
+      # VM password crypt
+      check_value "$1" "$2"
+      vm['crypt']="$2"
+      shift 2
+      ;;
+    --customise*)             # switch
+      # Customize VM
+      actions_list+=("customise")
+      shift
+      ;;
+    --debug)                  # switch
+      # Run in debug mode
+      options['debug']="true"
+      shift
+      ;;
+    --deletepool)             # switch
+      # Delete VM pool 
+      actions_list+=("deletepool")
+      shift
+      ;;
+    --deletesnap)             # switch
+      # Delete VM snapshot
+      actions_list+=("deletesnap")
+      shift
+      ;;
+    --deletevm)               # switch
+      # Delete VM 
+      actions_list+=("deletevm")
+      shift
+      ;;
+    --desc*)                  # switch
+      # description of snapshot
+      check_value "$1" "$2"
+      vm['description']="$2"
+      shift 2
+      ;;
+    --destroyvm)              # switch
+      # Destroy VM 
+      actions_list+=("destroyvm")
+      shift
+      ;;
+    --disk)                   # switch
+      # VM disk file
+      check_value "$1" "$2"
+      vm['disk']="$2"
+      shift 2
+      ;;
+    --dns)                    # switch
+      # VM DNS server
+      check_value "$1" "$2"
+      vm['dns']="$2"
+      shift 2
+      ;;
+    --domain*)                # switch
+      # VM domainname
+      check_value "$1" "$2"
+      vm['domain']="$2"
+      shift 2
+      ;;
+    --dryrun)                 # switch
+      # Run in dryrun mode
+      options['dryrun']="true"
+      shift
+      ;;
+    --exec)                   # switch
+      # Run command in VM image
+      actions_list+=("exec")
+      shift
+      ;;
+    --features)               # switch
       # VM features
       check_value "$1" "$2"
       vm['features']="$2"
       shift 2
       ;;
-    --filegroup)            # switch
+    --filegroup)              # switch
       # Set group of a file within VM image
       check_value "$1" "$2"
       vm['filegroup']="$2"
       shift 2
       ;;
-    --fileowner)            # switch
+    --fileowner)              # switch
       # Set owner of a file within VM image
       check_value "$1" "$2"
       vm['fileowner']="$2"
       shift 2
       ;;
-    --fileperms)            # switch
+    --fileperms)              # switch
       # Set permissions of a file within VM image
       check_value "$1" "$2"
       vm['fileperms']="$2"
       shift 2
       ;;
-    --force)                # switch
+    --force)                  # switch
       # Force mode
       options['force']="true"
       shift
       ;;
-    --fqdn)                 # switch
+    --fqdn)                   # switch
       # VM FQDN
       check_value "$1" "$2"
       vm['fqdn']="$2"
       shift 2
       ;;
-    --getimage)             # switch
-      # Get Image
-      get_image
-      shift
-      exit
-      ;;
-    --gateway|--router)     # switch
+    --gateway|--router)       # switch
       # VM gateway address
       check_value "$1" "$2"
       vm['gateway']="$2"
       shift 2
       ;;
-    --graphics)             # switch
-      # VM Graphics type
-      check_value "$1" "$2"
-      vm['graphics']="$2"
-      shift 2
-      ;;
-    --gecos)                # switch
+    --gecos)                  # switch
       # GECOS field for user
       check_value "$1" "$2"
       vm['gecos']="$2"
       shift 2
       ;;
-    --groupid|--gid)        # switch
+    --getimage)               # switch
+      # Get Image
+      get_image
+      shift
+      exit
+      ;;
+    --graphics)               # switch
+      # VM Graphics type
+      check_value "$1" "$2"
+      vm['graphics']="$2"
+      shift 2
+      ;;
+    --groupid|--gid)          # switch
       # Group ID
       check_value "$1" "$2"
       vm['groupid']="$2"
       shift 2
       ;;
-    --group|--groupname)    # switch
+    --group|--groupname)      # switch
       # Primary Group a user is member of in VM image
       check_value "$1" "$2"
       vm['groupname']="$2"
       shift 2
       ;;
-    --groups)               # switch
+    --groups)                 # switch
       # Additional groups a user is a member of in VM image
       check_value "$1" "$2"
       vm['groups']="$2"
       shift 2
       ;;
-    --help|--usage|-h)      # switch
+    --help|--usage|-h)        # switch
       # Print help
       print_usage "$2"
       shift 2
       exit
       ;;
-    --home*)                # switch
+    --home*)                  # switch
       # Home directory
       check_value "$1" "$2"
       vm['homedir']="$2"
       shift 2
       ;;
-    --hostdevice|--device)  # switch
+    --hostdevice|--device)    # switch
       # VM host device pass-through
       check_value "$1" "$2"
       vm['hostdevice']="$2"
       options['passthrough']="true"
       shift 2
       ;;
-    --hostname)             # switch
+    --hostname)               # switch
       # VM hostname
       check_value "$1" "$2"
       vm['hostname']="$2"
       shift 2
       ;;
-    --imagedir)             # switch
+    --imagedir)               # switch
       # Image directory
       check_value "$1" "$2"
       vm['imagedir']="$2"
       shift 2
       ;;
-    --imagefile)            # switch
+    --imagefile)              # switch
       # Image file
       check_value "$1" "$2"
       vm['imagefile']="$2"
       shift 2
       ;;
-    --imageurl)             # switch
+    --imageurl)               # switch
       # Image URL
       check_value "$1" "$2"
       vm['imageurl']="$2"
       shift 2
       ;;
-    --ip*)                  # switch
+    --inject*)                # switch
+      # Inject SSH keys into VM image
+      actions_list+=("inject")
+      shift
+      ;;
+    --install*)               # switch
+      # Install software into VM image
+      actions_list+=("install")
+      shift
+      ;;
+    --ip*)                    # switch
       # VM IP address
       check_value "$1" "$2"
       vm['ip']="$2"
       shift 2
       ;;
-    --kernel*)              # switch
+    --kernel*)                # switch
       # VM kernel
       check_value "$1" "$2"
       vm['kernel']="$2"
       shift 2
       ;;
-    --mask)                 # switch
+    --listpool*)              # switch
+      # List VM pools
+      actions_list+=("listpool")
+      shift
+      ;;
+    --listnet*)               # switch
+      # List VM networks
+      actions_list+=("listnet")
+      shift
+      ;;
+    --listsnap*)              # switch
+      # List VM snapshots
+      actions_list+=("listsnap")
+      shift
+      ;;
+    --listvm*)                # switch
+      # List VMs
+      actions_list+=("listvm")
+      shift
+      ;;
+    --mask)                   # switch
       # Enable masking of password and ssh keys
       options['mask']="true"
       shift
       ;;
-    --name|--vmname)        # switch
+    --name|--vmname)          # switch
       # Name of VM
       check_value "$1" "$2"
       vm['name']="$2"
       shift 2
       ;;
-    --nettype)              # switch
+    --nettype)                # switch
       # Net type (e.g. bridge)
       check_value "$1" "$2"
       vm['nettype']="$2"
       shift 2
       ;;
-    --netbus|netdriver)     # switch
+    --netbus|netdriver)       # switch
       # Net bus/driver (e.g. virtio)
       check_value "$1" "$2"
       vm['netbus']="$2"
       shift 2
       ;;
-    --netc*|--networkc*)    # switch
+    --netc*|--networkc*)      # switch
       # VM network config file
       check_value "$1" "$2"
       vm['netcfg']="$2"
       shift 2
       ;;
-    --netdev|--nic)         # switch
+    --netdev|--nic)           # switch
       # VM network device (e.g. enp1s0)
       check_value "$1" "$2"
       vm['netdev']="$2"
       shift 2
       ;;
-    --option*)              # switch
+    --option*)                # switch
       # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
-      options="$2"
-      options['options']="true"
+      options_list+=("$2")
       shift 2
       ;;
-    --osvariant)            # switch
+    --osvariant)              # switch
       # Os variant
       check_value "$1" "$2"
       vm['osvariant']="$2"
       shift 2
       ;;
-    --osvers|--release)     # switch
+    --osvers|--release)       # switch
       # OS version of image
       check_value "$1" "$2"
       vm['release']="$2"
       shift 2
       ;;
-    --packages)             # switch
+    --packages)               # switch
       # Packages to install in VM
       check_value "$1" "$2"
       vm['packages']="$2"
       shift 2
       ;;
-    --password)             # switch
+    --password)               # switch
       # Password for user (e.g. root)
       check_value "$1" "$2"
       vm['password']="$2"
       shift 2
       ;;
-    --poolname)             # switch
+    --passth*)                # switch
+      # Pass through host device to VM
+      actions_list+=("passth")
+      shift
+      ;;
+    --poke*)                  # switch
+      # Poke VM
+      actions_list+=("poke")
+      shift
+      ;;
+    --poolname)               # switch
       # Pool name
       check_value "$1" "$2"
       vm['poolname']="$2"
       shift 2
       ;;
-    --pooldir)              # switch
+    --pooldir)                # switch
       # Pool directory
       check_value "$1" "$2"
       vm['pooldir']="$2"
       shift 2
       ;;
-    --post*)                # switch
+    --post*)                  # switch
       # Post install script
       check_value "$1" "$2"
       vm['postscript']="$2"
       shift 2
       ;;
-    --power*)               # switch
+    --power*)                 # switch
       # VM power state
       check_value "$1" "$2"
       vm['power']="$2"
       shift 2
       ;;
-    --ram)                  # switch
+    --ram)                    # switch
       # Amount of VM RAM
       check_value "$1" "$2"
       vm['ram']="$2"
       shift 2
       ;;
-    --runcmd)               # switch
+    --reboot*|--restart*)     # switch
+      # Reboot VM
+      actions_list+=("reboot")
+      shift
+      ;;
+    --restore*|--rollback*)   # switch
+      # Restore snapshot
+      actions_list+=("restore")
+      shift
+      ;;
+    --resume*)                # switch
+      # Resume VM
+      actions_list+=("resume")
+      shift
+      ;;
+    --runcmd)                 # switch
       # Run command during install
       check_value "$1" "$2"
       vm['runcmd']="$2"
       shift 2
       ;;
-    --shell)                # switch
+    --sethost*)               # switch
+      # Set hostname of VM
+      actions_list+=("sethost")
+      shift
+      ;;
+    --setpass*)               # switch
+      # Set password of user in VM image
+      actions_list+=("setpass")
+      shift
+      ;;
+    --shell)                  # switch
       # User shell in VM image
       check_value "$1" "$2"
       vm['shell']="$2"
       shift 2
       ;;
-    --size)                 # switch
+    --size)                   # switch
       # Size of VM disk
       check_value "$1" "$2"
       vm['size']="$2"
       shift 2
       ;;
-    --shellcheck)           # switch
+    --shellcheck)             # switch
       # Run shellcheck on script
-      check_shellcheck
-      exit
+      actions_list+=("shellcheck")
+      shift
       ;;
-    --snap*)                # switch
+    --show*)                  # switch
+      # SHow VM config
+      actions_list+=("showconfig")
+      shift
+      ;;
+    --snap*)                  # switch
       # Name of snapshot
       check_value "$1" "$2"
       vm['snapshot']="$2"
       shift 2
       ;;
-    --source*|--input*)     # switch
+    --source*|--input*)       # switch
       # Source file to copy into VM disk
       check_value "$1" "$2"
       vm['sourcefile']="$2"
       shift 2
       ;;
-    --sshkey)               # switch
+    --ssh)                    # switch
+      # SSH to VM
+      actions_list+=("ssh")
+      shift
+      ;;
+    --sshkey)                 # switch
       # SSH key
       check_value "$1" "$2"
       vm['sshkey']="$2"
       shift 2
       ;;
-    --sshkeyfile)           # switch
+    --sshkeyfile)             # switch
       # SSH key file
       check_value "$1" "$2"
       vm['sshkeyfile']="$2"
       shift 2
       ;;
-    --strict)               # switch
+    --start*|--boot*)         # switch
+      # Start VM
+      actions_list+=("start")
+      shift
+      ;;
+    --strict)                 # switch
       # Run in strict mode
       options['strict']="true"
       shift
       ;;
-    --sudoers)              # switch
+    --sudoers)                # switch
       # Sudoers entry
       check_value "$1" "$2"
       vm['sudoers']="$2"
       shift 2
       ;;
-    --devicetype|--type)    # switch
+    --suspend)                # switch
+      # Suspend VM
+      actions_list+=("suspend")
+      shift
+      ;;
+    --devicetype|--type)      # switch
       # Device Type
       check_value "$1" "$2"
       vm['devicetype']="$2"
       shift 2
       ;;
-    --userid|--uid)         # switch
+    --to)                     # switch
+      # Destination of file to copy into VM disk
+      check_value "$1" "$2"
+      vm['destfile']="$2"
+      shift 2
+      ;;
+    --userid|--uid)           # switch
       # User ID
       check_value "$1" "$2"
       vm['userid']="$2"
       shift 2
       ;;
-    --user|--username)      # switch
+    --user|--username)        # switch
       # Username
       check_value "$1" "$2"
       vm['username']="$2"
       shift 2
       ;;
-    --verbose)              # switch
+    --verbose)                # switch
       # Run in verbose mode
       options['verbose']="true"
       shift
       ;;
-    --version|-V)           # switch
+    --version|-V)             # switch
       # Print version
       print_version
       shift
       exit
       ;;
-    --virtdir)              # switch
+    --virtdir)                # switch
       # VM/libvirt base directory
       check_value "$1" "$2"
       vm['virtdir']="$2"
@@ -2605,31 +2782,34 @@ if [ ! "${vm['hostname']}" = "" ]; then
   check_vm_name
 fi
 
-reset_defaults
-
 # Process options
 
-if [ "${options['options']}" = "true" ]; then
-  if [[ "${options}" =~ , ]]; then
-    IFS=',' read -r -a array <<< "${options}"
-    for option in "${array[@]}"; do
-      process_options "${option}"
-    done
-  else
-    process_options "${options}"
-  fi
+if [ -n "${options_list[*]}" ]; then
+  for list in "${options_list[@]}"; do
+    if [[ "${list}" =~ "," ]]; then
+      IFS="," read -r -a array <<< "${list[*]}"
+      for item in "${array[@]}"; do
+        process_options "${item}"
+      done
+    else
+      process_options "${list}"
+    fi
+  done
 fi
+
+reset_defaults
 
 # Process actions
 
-if [ "${options['actions']}" = "true" ]; then
-  if [[ "${actions}" =~ "," ]]; then
-    IFS=',' read -r -a array <<< "${actions}"
-    for action in "${array[@]}"; do
-      process_actions "${action}"
-      sleep 2
-    done
-  else
-    process_actions "${actions}"
-  fi
+if [ -n "${actions_list[*]}" ]; then
+  for list in "${actions_list[@]}"; do
+    if [[ "${list}" =~ "," ]]; then
+      IFS="," read -r -a array <<< "${list[*]}"
+      for item in "${array[@]}"; do
+        process_actions "${item}"
+      done
+    else
+      process_actions "${list}"
+    fi
+  done
 fi
