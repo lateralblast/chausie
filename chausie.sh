@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.1.9
+# Version:      1.2.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1724,7 +1724,11 @@ reset_defaults () {
   fi
   verbose_message "Setting release directory to \"${vm['releasedir']}\""  "notice"
   if [ "${vm['osvariant']}" = "" ]; then
-    vm['osvariant']="ubuntu${vm['release']}"
+    if [ "${vm['release']}" -ge 26 ]; then
+      vm['osvariant']="ubuntu25.10"
+    else
+      vm['osvariant']="ubuntu${vm['release']}"
+    fi
   fi
   verbose_message "Setting OS variant to \"${vm['osvariant']}\""          "notice"
   if [ "${vm['postscript']}" = "" ]; then
