@@ -240,3 +240,15 @@
 # Added separate actions to command line parsing section
 # 1.2.0: Tue 19 May 2026 15:45:12 AEST
 # Added fix for osvariant with Ubuntu 26.04
+# 1.2.1: Fri Jul 31 07:32:59 PM AEST 2026
+# Added osname switch and libvirt-dev package requirement
+# 1.2.2: Sat Aug  1 09:13:32 PM AEST 2026
+# Applied shellcheck recommendations
+# 1.2.3: Sat  1 Aug 2026 08:58:26 AEST
+# Added initial support for opnsense
+# 1.2.4: Sat  1 Aug 2026 08:59:04 AEST
+# Added CPU type determination for opnsense 
+# 1.2.5: Sat  1 Aug 2026 09:25:41 AEST
+# Fixed ability for script to run further in dry run mode
+# 1.2.6: Sat  1 Aug 2026 09:31:47 AEST
+# More opnsense support

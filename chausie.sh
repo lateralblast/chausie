@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.2.0
+# Version:      1.2.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -160,9 +160,9 @@ check_shellcheck () {
   fi
 }
 
-# Get Codename from release
+# Get Ubuntu Codename from release
 
-get_codename_from_release () {
+get_ubuntu_codename_from_release () {
   case "${vm['release']}" in
     "4.20")
       vm['codename']="warty"
@@ -302,9 +302,9 @@ get_codename_from_release () {
   esac
 }
 
-# Get Release from Codename
+# Get Ubuntu Release from Codename
 
-get_release_from_codename () {
+get_ubuntu_release_from_codename () {
   case "${vm['codename']}" in
     warty)
       vm['release']="4.10"
@@ -444,6 +444,24 @@ get_release_from_codename () {
   esac
 }
 
+# Get OPNsense osvariant
+
+get_opnsense_osvariant () {
+  vm['osvariant']="freebsd14.2"
+}
+
+# Get OPNsense release
+
+get_opnsense_release () {
+  vm['release']="26.7"
+}
+
+# Get OPNsense codename
+
+get_opnsense_codename () {
+  vm['codename']="nano"
+}
+
 # Get DNS
 
 get_dns () {
@@ -540,6 +558,7 @@ set_defaults () {
   vm['cdrom']=""
   vm['crypt']=""
   vm['power']=""
+  vm['osname']="ubuntu"
   vm['exists']="false"
   vm['domain']=""
   vm['userid']=""
@@ -629,7 +648,7 @@ set_defaults () {
     defaults['bridge']="en0"
   else
     os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' )
-    os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois"
+    os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev"
     defaults['bridge']="br0"
   fi
   if [ "${os['name']}" = "Darwin" ]; then
@@ -798,8 +817,20 @@ get_image () {
     vm['releasedir']="${vm['imagedir']}/releases"
   fi
   create_libvirt_dir "${vm['releasedir']}"
-  if [ ! -f "${vm['releasedir']}/${vm['imagefile']}" ]; then
+  case "${vm['osname']}" in
+    "opnsense")
+      check_file=$( basename -s ".bz2" "${vm['imagefile']}" )
+      check_file="${vm['releasedir']}/${check_file}"
+      ;;
+    *)
+      check_file="${vm['releasedir']}/${vm['imagefile']}"
+      ;;
+  esac
+  if [ ! -f "${check_file}" ]; then
     execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
+    if [ "${vm['osname']}" = "opnsense" ]; then
+      execute_command "bzip2 -d ${check_file}" "linuxsu"
+    fi
   else
     verbose_message "Cloud Image \"${vm['releasedir']}/${vm['imagefile']}\" already exists" "notice"
   fi
@@ -860,12 +891,29 @@ create_disk () {
   if [ -f "${vm['disk']}" ]; then
     warning_message "VM disk file \"${vm['disk']}\" already exists"
   else
-    if [ "${options['backing']}" = "true" ]; then
-      execute_command "qemu-img create -b ${vm['releasedir']}/${vm['imagefile']} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
-    else
-      execute_command "cp ${vm['releasedir']}/${vm['imagefile']} ${vm['disk']}"  "linuxsu"
-      execute_command "qemu-img resize ${vm['disk']} ${vm['size']}"              "linuxsu"
-    fi 
+    case "${vm['osname']}" in
+      "opnsense")
+        check_file=$( basename -s ".bz2" "${vm['imagefile']}" )
+        check_file="${vm['releasedir']}/${check_file}"
+        ;;
+      *)
+      check_file="${vm['releasedir']}/${vm['imagefile']}"
+      ;;
+    esac
+    case "${vm['osname']}" in
+      "ubuntu") 
+        if [ "${options['backing']}" = "true" ]; then
+          execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
+        else
+          execute_command "cp ${check_file} ${vm['disk']}"              "linuxsu"
+          execute_command "qemu-img resize ${vm['disk']} ${vm['size']}" "linuxsu"
+        fi 
+        ;;
+      "opnsense")
+        execute_command "qemu-img convert -f raw -O qcow2 ${check_file} ${vm['disk']}" "linuxsu"
+        execute_command "qemu-img resize ${vm['disk']} ${vm['size']}"                  "linuxsu"
+        ;;
+    esac
   fi
 }
 
@@ -877,14 +925,16 @@ create_vm () {
   check_image_exists
   create_disk
   fix_libvirt_perms "${vm['disk']}"
-  if [ "${vm['exists']}" = "false" ]; then
-    if [ "${options['localds']}" = "true" ]; then
-      configure_network
-      configure_init
-      if [ "${os['name']}" = "Linux" ]; then
-        execute_command "cloud-localds --network-config ${vm['netcfg']} ${vm['cdrom']} ${vm['initcfg']}" "linuxsu"
-      else
-        execute_command "mkisofs -output ${vm['cdrom']} -volid cidata -joliet -rock {${vm['initcfg']},${vm['netcfg']}"
+  if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
+    if [ "${vm['osname']}" = "ubuntu" ]; then
+      if [ "${options['localds']}" = "true" ]; then
+        configure_network
+        configure_init
+        if [ "${os['name']}" = "Linux" ]; then
+          execute_command "cloud-localds --network-config ${vm['netcfg']} ${vm['cdrom']} ${vm['initcfg']}" "linuxsu"
+        else
+          execute_command "mkisofs -output ${vm['cdrom']} -volid cidata -joliet -rock {${vm['initcfg']},${vm['netcfg']}"
+        fi
       fi
     fi
     if [ "${options['autoconsole']}" = "false" ]; then
@@ -923,7 +973,11 @@ create_vm () {
       cli['features']="--features ${vm['features']}"
     fi
     cli['graphics']="--graphics ${vm['graphics']}"
-    cli['boot']="--boot ${vm['boot']}"
+    if [ "${vm['osname']}" = "opnsense" ]; then
+      cli['boot']=""
+    else
+      cli['boot']="--boot ${vm['boot']}"
+    fi
     if [ "${options['reboot']}" = "false" ]; then
       cli['reboot']="--noreboot"
     fi
@@ -1144,7 +1198,9 @@ inject_key () {
     fi
     if [ -f "${vm['sshkeyfile']}" ]; then
       if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
-        execute_command "virt-customize -a ${vm['disk']} --ssh-inject ${vm['username']}:file:${vm['sshkeyfile']}" "linuxsu"
+        if [ ! "${vm['osname']}" = "opnsense" ]; then
+          execute_command "virt-customize -a ${vm['disk']} --ssh-inject ${vm['username']}:file:${vm['sshkeyfile']}" "linuxsu"
+        fi
       else
         warning_message "VM disk \"${vm['disk']}\" does not exist"
       fi
@@ -1210,7 +1266,9 @@ upload_file () {
   if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
     if [ -f "${vm['sourcefile']}" ]; then
       if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
-        execute_command "virt-customize -a ${vm['disk']} --upload ${vm['sourcefile']}:${vm['destfile']}" "linuxsu"
+        if [ ! "${vm['osname']}" = "opnsense" ]; then
+          execute_command "virt-customize -a ${vm['disk']} --upload ${vm['sourcefile']}:${vm['destfile']}" "linuxsu"
+        fi
         if [ ! "${vm['fileowner']}" = "" ]; then
           if [ ! "${vm['filegroup']}" = "" ]; then
             command="chown ${vm['fileowner']} ${vm['destfile']}"
@@ -1242,7 +1300,9 @@ run_command () {
       if [ "${vm[state]}" = "running" ]; then
         stop_vm
       fi
-      execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
+      if [ ! "${vm['osname']}" = "opnsense" ]; then
+        execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
+      fi
     else
       warning_message "VM disk \"${vm['disk']}\" does not exist"
     fi
@@ -1560,122 +1620,171 @@ list_nets () {
 reset_defaults () {
   if [ "${options['debug']}" = "true" ]; then
     set -x
+    verbose_message "Enabling debug mode"                                 "notice"
   fi
-  verbose_message "Enabling debug mode"                 "notice"
   if [ "${options['strict']}" = "true" ]; then
     set -u
+    verbose_message "Enabling strict mode"                                "notice"
   fi
-  verbose_message "Enabling strict mode"                "notice"
   if [ "${options['dryrun']}" = "true" ]; then
-    verbose_message "Enabling dryrun mode"              "notice"
+    verbose_message "Enabling dryrun mode"                                "notice"
   fi
+  verbose_message "Setting OS name to \"${vm['osname']}\""                 "notice"
   if [ "${vm['arch']}" = "" ]; then
     vm['arch']="${os['arch']}"
   fi
-  verbose_message "Setting arch to \"${vm['arch']}\""   "notice"
+  if [ "${vm['osname']}" = "opnsense" ]; then
+    vm['arch']="amd64"
+    if [ "${os['arch']}" != "amd64" ]; then
+      vm['cputype']="qemu64"
+    fi
+    options['localds']="false"
+  fi
+  verbose_message "Setting arch to \"${vm['arch']}\""                     "notice"
   if [ "${vm['cputype']}" = "" ]; then
     vm['cputype']="${defaults['cputype']}"
   fi
-  verbose_message "Setting CPU type to \"${vm['cputype']}\""     "notice"
+  verbose_message "Setting CPU type to \"${vm['cputype']}\""              "notice"
   if [ "${vm['name']}" = "" ]; then
     vm['name']="${script['name']}"
   fi
-  verbose_message "Setting VM name to \"${vm['name']}\""         "notice"
+  verbose_message "Setting VM name to \"${vm['name']}\""                  "notice"
   if [ "${vm['cpus']}" = "" ]; then
     vm['cpus']="${defaults['cpus']}"
   fi
-  verbose_message "Setting VM CPUs to \"${vm['cpus']}\""         "notice"
+  verbose_message "Setting VM CPUs to \"${vm['cpus']}\""                  "notice"
   if [ "${vm['ram']}" = "" ]; then
     vm['ram']="${defaults['ram']}"
   fi
-  verbose_message "Setting VM RAM to \"${vm['ram']}\""           "notice"
+  verbose_message "Setting VM RAM to \"${vm['ram']}\""                    "notice"
   if [ "${vm['size']}" = "" ]; then
     vm['size']="${defaults['size']}"
   fi
-  verbose_message "Setting VM size to \"${vm['size']}\""         "notice"
-  if [ "${vm['release']}" = "" ]; then
-    if [ "${vm['codename']}" = "" ]; then
+  verbose_message "Setting VM size to \"${vm['size']}\""                  "notice"
+  case "${vm['osname']}" in 
+    "ubuntu")
+      if [ "${vm['release']}" = "" ]; then
+        if [ "${vm['codename']}" = "" ]; then
+          vm['release']="${defaults['release']}"
+        else
+          get_ubuntu_release_from_codename
+        fi
+      fi
+      ;;
+    "opnsense")
+      if [ "${vm['release']}" = "" ]; then
+        get_opnsense_release
+      fi
+      if [ "${vm['osvariant']}" = "" ]; then
+        get_opnsense_osvariant
+      fi
+      if [ "${vm['codename']}" = "" ]; then
+        get_opnsense_codename
+      fi
+      ;;
+    *)      
       vm['release']="${defaults['release']}"
-    else
-      get_release_from_codename
-    fi
-  fi
-  verbose_message "Setting OS version to \"${vm['release']}\""   "notice"
+      ;;
+  esac
+  verbose_message "Setting OS version to \"${vm['release']}\""            "notice"
   if [ "${vm['boot']}" = "" ]; then
     vm['boot']="${defaults['boot']}"
   fi
-  verbose_message "Setting boot type to \"${vm['boot']}\""    "notice"
+  verbose_message "Setting boot type to \"${vm['boot']}\""                "notice"
   if [ "${vm['graphics']}" = "" ]; then
     vm['graphics']="${defaults['graphics']}"
   fi
-  verbose_message "Setting graphics to \"${vm['graphics']}\"" "notice"
+  verbose_message "Setting graphics to \"${vm['graphics']}\""             "notice"
   if [ "${vm['hostname']}" = "" ]; then
     vm['hostname']="${vm['name']}"
   fi
-  verbose_message "Setting hostname to \"${vm['hostname']}\"" "notice"
+  verbose_message "Setting hostname to \"${vm['hostname']}\""             "notice"
   if [ "${vm['nettype']}" = "" ]; then
     vm['nettype']="${defaults['nettype']}"
   fi
-  verbose_message "Setting net type to \"${vm['nettype']}\""  "notice"
+  verbose_message "Setting net type to \"${vm['nettype']}\""              "notice"
   if [ "${vm['bridge']}" = "" ]; then
     vm['bridge']="${defaults['bridge']}"
   fi
-  verbose_message "Setting bridge to \"${vm['bridge']}\""           "notice"
+  verbose_message "Setting bridge to \"${vm['bridge']}\""                 "notice"
   if [ "${vm['netbus']}" = "" ]; then
     vm['netbus']="${defaults['netbus']}"
   fi
-  verbose_message "Setting net bus to \"${vm['netbus']}\""          "notice"
+  verbose_message "Setting net bus to \"${vm['netbus']}\""                "notice"
   if [ "${vm['netdev']}" = "" ]; then
     vm['netdev']="${defaults['netdev']}"
   fi
-  verbose_message "Setting net device to \"${vm['netdev']}\""       "notice"
+  verbose_message "Setting net device to \"${vm['netdev']}\""             "notice"
   if [ "${vm['gateway']}" = "" ]; then
     get_gateway
   fi
-  verbose_message "Setting gateway to \"${vm['gateway']}\""         "notice"
+  verbose_message "Setting gateway to \"${vm['gateway']}\""               "notice"
   if [ "${vm['cidr']}" = "" ]; then
     get_cidr
   fi
-  verbose_message "Setting CIDR to \"${vm['cidr']}\""               "notice"
+  verbose_message "Setting CIDR to \"${vm['cidr']}\""                     "notice"
   if [ "${vm['dns']}" = "" ]; then
     get_dns
   fi
-  verbose_message "Setting DNS server to \"${vm['dns']}\""          "notice"
+  verbose_message "Setting DNS server to \"${vm['dns']}\""                "notice"
   if [ ! "${vm['hostdevice']}" = "" ]; then
     vm['features']="${defaults['features']}"
-    verbose_message "Setting features to \"${vm['features']}\""     "notice"
+    verbose_message "Setting features to \"${vm['features']}\""           "notice"
   fi
   if [ ! "${vm['machine']}" = "" ]; then
-    verbose_message "Setting machine to \"${vm['machine']}\""       "notice"
+    verbose_message "Setting machine to \"${vm['machine']}\""             "notice"
   fi
-  if [ "${vm['imagefile']}" = "" ]; then
-    if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
-      if [ "${vm['codename']}" = "" ]; then
-        get_codename_from_release
+  case "${vm['osname']}" in
+    "ubuntu")
+      if [ "${vm['imagefile']}" = "" ]; then
+        if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
+          if [ "${vm['codename']}" = "" ]; then
+            get_ubuntu_codename_from_release
+          fi
+          vm['imagefile']="${vm['codename']}-server-cloudimg-${os['arch']}.img"
+        else
+          vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
+        fi
       fi
-      vm['imagefile']="${vm['codename']}-server-cloudimg-${os['arch']}.img"
-    else
-      vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
-    fi
-  fi
-  verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""   "notice"
-  if [ "${vm['imageurl']}" = "" ]; then
-    if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
-      if [ "${vm['codename']}" = "" ]; then
-        get_codename_from_release
+      ;;
+    "opnsense")
+      vm['imagefile']="OPNsense-${vm['release']}-${vm['codename']}-${vm['arch']}.img.bz2"
+      ;;
+  esac 
+  verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""         "notice"
+  case "${vm['osname']}" in
+    "ubuntu")
+      if [ "${vm['imageurl']}" = "" ]; then
+        if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
+          if [ "${vm['codename']}" = "" ]; then
+            get_ubuntu_codename_from_release
+          fi
+          vm['imageurl']="https://cloud-images.ubuntu.com/${vm['codename']}/current/${vm['imagefile']}"
+        else
+          vm['imageurl']="https://cloud-images.ubuntu.com/releases/${vm['release']}/release/${vm['imagefile']}"
+        fi
       fi
-      vm['imageurl']="https://cloud-images.ubuntu.com/${vm['codename']}/current/${vm['imagefile']}"
-    else
-      vm['imageurl']="https://cloud-images.ubuntu.com/releases/${vm['release']}/release/${vm['imagefile']}"
-    fi
-  fi
-  verbose_message "Setting CI URL to \"${vm['imageurl']}\""         "notice"
+      ;;
+    "opnsense")
+      if [ "${vm['imageurl']}" = "" ]; then
+        vm['imageurl']="https://mirror.ams1.nl.leaseweb.net/opnsense/releases/${vm['release']}/OPNsense-${vm['release']}-${vm['codename']}-${vm['arch']}.img.bz2"
+      fi
+      ;;
+    "debian")
+      if [ "${vm['imageurl']}" = "" ]; then
+        vm['imageurl']="https://cdimage.debian.org/debian-cd/${vm['release']}/amd64/cloud/${vm['imagefile']}"
+      fi
+      ;;
+    *)      
+      ;;
+  esac
+  verbose_message "Setting CI URL to \"${vm['imageurl']}\""               "notice"
   if [ "${os['name']}" = "Darwin" ]; then
     os['brewdir']="/opt/homebrew/Cellar"
     if [ ! -d "${os['brewdir']}" ]; then
       os['brewdir']="/usr/local/Cellar"
     fi
-    verbose_message "Setting brew directory to \"${os['brewdir']}\""     "notice"
+    verbose_message "Setting brew directory to \"${os['brewdir']}\""      "notice"
   fi
   if [ "${vm['virtdir']}" = "" ]; then
     if [ "${os['name']}" = "Darwin" ]; then
@@ -1750,62 +1859,62 @@ reset_defaults () {
       vm['username']="${defaults['username']}"
     fi
   fi
-  verbose_message "Setting username to \"${vm['username']}\""   "notice"
+  verbose_message "Setting username to \"${vm['username']}\""             "notice"
   if [ "${vm['password']}" = "" ]; then
     vm['password']="${defaults['password']}"
   fi
-  verbose_message "Setting password to \"${vm['password']}\""   "notice"
+  verbose_message "Setting password to \"${vm['password']}\""             "notice"
   if [ "${vm['userid']}" = "" ]; then
     vm['userid']="${defaults['userid']}"
   fi
-  verbose_message "Setting user ID to \"${vm['userid']}\""      "notice"
+  verbose_message "Setting user ID to \"${vm['userid']}\""                "notice"
   if [ "${vm['groupname']}" = "" ]; then
     vm['groupname']="${vm['username']}"
   fi
-  verbose_message "Setting group to \"${vm['groupname']}\""     "notice"
+  verbose_message "Setting group to \"${vm['groupname']}\""               "notice"
   if [ "${vm['gecos']}" = "" ]; then
     vm['gecos']="${vm['username']}"
   fi
-  verbose_message "Setting GECOS to \"${vm['gecos']}\""         "notice"
+  verbose_message "Setting GECOS to \"${vm['gecos']}\""                   "notice"
   if [ "${vm['groupid']}" = "" ]; then
     vm['groupid']="${defaults['groupid']}"
   fi
-  verbose_message "Setting group ID to \"${vm['groupid']}\""    "notice"
+  verbose_message "Setting group ID to \"${vm['groupid']}\""              "notice"
   if [ "${vm['homedir']}" = "" ]; then
     vm['homedir']="/home/${vm['username']}"
   fi
-  verbose_message "Setting home to \"${vm['homedir']}\""        "notice"
+  verbose_message "Setting home to \"${vm['homedir']}\""                  "notice"
   if [ "${vm['groups']}" = "" ]; then
     vm['groups']="${defaults['groups']}"
   fi
-  verbose_message "Setting groups to \"${vm['groups']}\""          "notice"
+  verbose_message "Setting groups to \"${vm['groups']}\""                 "notice"
   if [ "${vm['shell']}" = "" ]; then
     vm['shell']="${defaults['shell']}"
   fi
-  verbose_message "Setting shell to \"${vm['shell']}\""         "notice"
+  verbose_message "Setting shell to \"${vm['shell']}\""                   "notice"
   if [ "${vm['sudoers']}" = "" ]; then
     vm['sudoers']="${defaults['sudoers']}"
   fi
-  verbose_message "Setting sudoers  to \"${vm['sudoers']}\""    "notice"
+  verbose_message "Setting sudoers  to \"${vm['sudoers']}\""              "notice"
   if [ "${vm['sshkeyfile']}" = "" ]; then
     vm['sshkeyfile']=$( find "${os['home']}/.ssh" -name "*.pub" | head -1 )
   fi
-  verbose_message "Setting key file to \"${vm['sshkeyfile']}\"" "notice"
+  verbose_message "Setting key file to \"${vm['sshkeyfile']}\""           "notice"
   if [ "${vm['sshkey']}" = "" ]; then
     if [ ! "${vm['sshkeyfile']}" = "" ]; then
       vm['sshkey']=$( cat "${vm['sshkeyfile']}" )
     fi
   fi
-  verbose_message "Setting SSH key to \"${vm['sshkey']}\""      "notice"
+  verbose_message "Setting SSH key to \"${vm['sshkey']}\""                "notice"
   if [ "${vm['ip']}" = "dhcp" ] || [ "${vm['ip']}" = "" ]; then
     vm['dhcp']="true"
-    verbose_message "Setting network to DHCP"                   "notice"
+    verbose_message "Setting network to DHCP"                             "notice"
   else
-    verbose_message "Setting network to static"                 "notice"
-    verbose_message "Seting IP to \"${vm['ip']}\""              "notice"
-    verbose_message "Seting CIDR to \"${vm['cidr']}\""          "notice"
-    verbose_message "Seting gateway to \"${vm['gateway']}\""    "notice"
-    verbose_message "Seting DNS server to \"${vm['dns']}\""     "notice"
+    verbose_message "Setting network to static"                           "notice"
+    verbose_message "Seting IP to \"${vm['ip']}\""                        "notice"
+    verbose_message "Seting CIDR to \"${vm['cidr']}\""                    "notice"
+    verbose_message "Seting gateway to \"${vm['gateway']}\""              "notice"
+    verbose_message "Seting DNS server to \"${vm['dns']}\""               "notice"
   fi
   create_libvirt_dir "${vm['releasedir']}"
   vm['majorrelease']=$( echo "${vm['release']}" | cut -f1 -d. )
@@ -2188,7 +2297,7 @@ while test $# -gt 0; do
       vm['arch']="$2"
       shift 2
       ;;
-    --boot*)                  # switch
+    --boottype)               # switch
       # VM boot type (e.g. UEFI)
       check_value "$1" "$2"
       vm['boot']="$2"
@@ -2559,6 +2668,12 @@ while test $# -gt 0; do
       # Option(s) (e.g. verbose,dryrun)
       check_value "$1" "$2"
       options_list+=("$2")
+      shift 2
+      ;;
+    --os|--osname)            # switch
+      # Name of OS (e.g. ubuntu, opnsense)
+      check_value "$1" "$2"
+      vm['osname']="$2"
       shift 2
       ;;
     --osvariant)              # switch
