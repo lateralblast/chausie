@@ -15,7 +15,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.2.6
+Current version 1.2.8
 
 Prerequisites
 -------------
@@ -29,6 +29,7 @@ Required packages:
 - virt-manager
 - cloud-image-utils
 - ipcalc
+- pbzip2
 
 Example command to install packages on Ubuntu:
 

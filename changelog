@@ -252,3 +252,7 @@
 # Fixed ability for script to run further in dry run mode
 # 1.2.6: Sat  1 Aug 2026 09:31:47 AEST
 # More opnsense support
+# 1.2.7: Sat  1 Aug 2026 15:20:03 AEST
+# Improved opnsense support
+# 1.2.8: Sat  1 Aug 2026 15:22:22 AEST
+# Replaced bzip2 with pbzip2

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.2.6
+# Version:      1.2.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -827,9 +827,13 @@ get_image () {
       ;;
   esac
   if [ ! -f "${check_file}" ]; then
-    execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
     if [ "${vm['osname']}" = "opnsense" ]; then
-      execute_command "bzip2 -d ${check_file}" "linuxsu"
+      if [ ! -f "${check_file}.bz2" ]; then
+        execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
+      fi
+      execute_command "pbzip2 -d ${check_file}.bz2" "linuxsu"
+    else
+      execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
     fi
   else
     verbose_message "Cloud Image \"${vm['releasedir']}/${vm['imagefile']}\" already exists" "notice"
@@ -877,11 +881,20 @@ check_bridge () {
 # Check Cloud Image exists
 
 check_image_exists () {
-  if [ ! -f "${vm['releasedir']}/${vm['imagefile']}" ]; then
-    warning_message "Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\" does not exist"
+  case "${vm['osname']}" in
+    "opnsense")
+      check_file=$( basename -s ".bz2" "${vm['imagefile']}" )
+      check_file="${vm['releasedir']}/${check_file}"
+      ;;
+    *)
+      check_file="${vm['releasedir']}/${vm['imagefile']}"
+      ;;
+  esac
+  if [ ! -f "${check_file}" ]; then
+    warning_message "Cloud Image file \"${check_file}\" does not exist"
     do_exit
   else
-    information_message "Found Cloud Image file \"${vm['releasedir']}/${vm['imagefile']}\""
+    information_message "Found Cloud Image file \"${check_file}\""
   fi
 }
 
