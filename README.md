@@ -15,7 +15,13 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.2.8
+Current version 1.3.3
+
+Supported Distributions
+-----------------------
+
+- Ubuntu
+- OPNsense
 
 Prerequisites
 -------------
@@ -30,6 +36,8 @@ Required packages:
 - cloud-image-utils
 - ipcalc
 - pbzip2
+- genisoimage (Linux)
+- mkisofs (MacOS)
 
 Example command to install packages on Ubuntu:
 

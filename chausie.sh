@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.2.8
+# Version:      1.3.3
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -444,22 +444,57 @@ get_ubuntu_release_from_codename () {
   esac
 }
 
-# Get OPNsense osvariant
+# Get osvariant
 
-get_opnsense_osvariant () {
-  vm['osvariant']="freebsd14.2"
+get_osvariant () {
+  case "${vm['osname']}" in
+    opnsense)
+      vm['osvariant']="freebsd14.2"
+      ;;
+    ubuntu)
+      if [ "${vm['release']}" = "26.04" ]; then
+        vm['osvariant']="ubuntu25.10"
+      else
+        vm['osvariant']="ubuntu${vm['release']}"
+      fi
+      ;;
+    alma*)
+      release_major=$( echo "${vm['release']}" | cut -d. -f1 )
+      vm['osvariant']="almalinux${release_major}"
+      ;;
+  esac
 }
 
-# Get OPNsense release
+# Get release
 
-get_opnsense_release () {
-  vm['release']="26.7"
+get_release () {
+  case "${vm['osname']}" in
+    opnsense)
+      vm['release']="26.7"
+      ;;
+    ubuntu)
+      get_ubuntu_release_from_codename
+      ;;
+    alma*)
+      vm['release']="10" 
+      ;;
+  esac
 }
 
-# Get OPNsense codename
+# Get codename
 
-get_opnsense_codename () {
-  vm['codename']="nano"
+get_codename () {
+  case "${vm['osname']}" in
+    opnsense)
+      vm['codename']="nano"
+      ;;
+    ubuntu)
+      get_ubuntu_codename_from_release
+      ;;
+    alma*)
+      vm['codename']="GenericCloud-latest"
+      ;;
+  esac
 }
 
 # Get DNS
@@ -569,6 +604,7 @@ set_defaults () {
   vm['bridge']=""
   vm['kernel']="linux-generic"
   vm['runcmd']="/usr/bin/systemctl set-default multi-user.target"
+  vm['isoarch']=""
   vm['machine']=""
   vm['sudoers']=""
   vm['netmask']=""
@@ -613,11 +649,13 @@ set_defaults () {
   options['strict']="false"
   options['dryrun']="false"
   options['reboot']="false"
+  options['pwauth']="false"
   options['localds']="true"
   options['actions']="false"
   options['options']="false"
   options['verbose']="false"
   options['backing']="true"
+  options['chpasswd']="false"
   options['autostart']="false"
   options['shellcheck']="false"
   options['secureboot']="false"
@@ -767,14 +805,6 @@ check_config () {
     done
   fi
   check_packages
-  if [ "${os['name']}" = "Darwin" ]; then
-    localds_bin="/usr/local/bin/cloud-localds"
-    localds_url="https://raw.githubusercontent.com/canonical/cloud-utils/main/bin/cloud-localds"
-    if [ ! -f "${localds_bin}" ]; then
-      execute_command "curl -o ${localds_bin} ${localds_url}" "su"
-      execute_command "chmod +x ${localds_bin}"               "su"
-    fi
-  fi
 }
 
 # Fix Linux libvirt perms
@@ -914,7 +944,7 @@ create_disk () {
       ;;
     esac
     case "${vm['osname']}" in
-      "ubuntu") 
+      ubuntu|alma*) 
         if [ "${options['backing']}" = "true" ]; then
           execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
         else
@@ -922,7 +952,7 @@ create_disk () {
           execute_command "qemu-img resize ${vm['disk']} ${vm['size']}" "linuxsu"
         fi 
         ;;
-      "opnsense")
+      opnsense)
         execute_command "qemu-img convert -f raw -O qcow2 ${check_file} ${vm['disk']}" "linuxsu"
         execute_command "qemu-img resize ${vm['disk']} ${vm['size']}"                  "linuxsu"
         ;;
@@ -939,14 +969,24 @@ create_vm () {
   create_disk
   fix_libvirt_perms "${vm['disk']}"
   if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
-    if [ "${vm['osname']}" = "ubuntu" ]; then
+    if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ]; then
       if [ "${options['localds']}" = "true" ]; then
         configure_network
         configure_init
         if [ "${os['name']}" = "Linux" ]; then
           execute_command "cloud-localds --network-config ${vm['netcfg']} ${vm['cdrom']} ${vm['initcfg']}" "linuxsu"
         else
-          execute_command "mkisofs -output ${vm['cdrom']} -volid cidata -joliet -rock {${vm['initcfg']},${vm['netcfg']}"
+          tmp_dir="/tmp/${script['name']}"
+          if [ ! -d "${tmp_dir}" ]; then
+            execute_command "mkdir ${tmp_dir}" "linuxsu"
+          fi
+          user_data="${tmp_dir}/user-data"
+          meta_data="${tmp_dir}/meta-data"
+          network_config="${tmp_dir}/network-config"
+          execute_command "cp ${vm['initcfg']} ${user_data}"     "linuxsu"
+          execute_command "cp ${vm['netcfg']} ${network_config}" "linuxsu"
+          execute_command "touch ${meta_data}"                   "linuxsu"
+          execute_command "mkisofs -output ${vm['cdrom']} -volid cidata -joliet -rock ${user_data} ${network_config} ${meta_data}" "linuxsu"
         fi
       fi
     fi
@@ -1212,7 +1252,9 @@ inject_key () {
     if [ -f "${vm['sshkeyfile']}" ]; then
       if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
         if [ ! "${vm['osname']}" = "opnsense" ]; then
-          execute_command "virt-customize -a ${vm['disk']} --ssh-inject ${vm['username']}:file:${vm['sshkeyfile']}" "linuxsu"
+          if [ "${os['name']}" = "Linux" ]; then
+            execute_command "virt-customize -a ${vm['disk']} --ssh-inject ${vm['username']}:file:${vm['sshkeyfile']}" "linuxsu"
+          fi
         fi
       else
         warning_message "VM disk \"${vm['disk']}\" does not exist"
@@ -1280,7 +1322,9 @@ upload_file () {
     if [ -f "${vm['sourcefile']}" ]; then
       if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
         if [ ! "${vm['osname']}" = "opnsense" ]; then
-          execute_command "virt-customize -a ${vm['disk']} --upload ${vm['sourcefile']}:${vm['destfile']}" "linuxsu"
+          if [ "${os['name']}" = "Linux" ]; then
+            execute_command "virt-customize -a ${vm['disk']} --upload ${vm['sourcefile']}:${vm['destfile']}" "linuxsu"
+          fi
         fi
         if [ ! "${vm['fileowner']}" = "" ]; then
           if [ ! "${vm['filegroup']}" = "" ]; then
@@ -1314,7 +1358,9 @@ run_command () {
         stop_vm
       fi
       if [ ! "${vm['osname']}" = "opnsense" ]; then
-        execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
+        if [ "${os['name']}" = "Linux" ]; then
+          execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
+        fi
       fi
     else
       warning_message "VM disk \"${vm['disk']}\" does not exist"
@@ -1325,7 +1371,9 @@ run_command () {
 # Set password
 
 set_password () {
-  execute_command "virt-customize -a ${vm['disk']} --root-password password:${vm['password']}"
+  if [ "${os['name']}" = "Linux" ]; then
+    execute_command "virt-customize -a ${vm['disk']} --root-password password:${vm['password']}"
+  fi
 }
 
 # Customize VM
@@ -1390,9 +1438,35 @@ generate_crypt () {
   fi
 }
 
-# Configure cloud-init config file
+# Configure alma cloud-init config file
 
-configure_init () {
+configure_alma_init () {
+  temp_file="/tmp/cloud-init.cfg"
+  mask_file="/tmp/cloud-init.cfg.masked"
+  generate_crypt
+  echo "#cloud-config"                                | tee "${mask_file}"      > "${temp_file}"
+  echo "ssh_pwauth: ${options['pwauth']}"             | tee "${mask_file}"     >> "${temp_file}"
+  echo "password: #MASKED#"                                                    >> "${mask_file}"
+  echo "password: ${vm['password']}"                                           >> "${temp_file}"
+  echo "chpasswd:"                                    | tee "${mask_file}"     >> "${temp_file}"
+  echo "  expire: ${options['chpasswd']}"             | tee "${mask_file}"     >> "${temp_file}"
+  if [ ! "${vm['sshkey']}" = "" ]; then
+    echo "ssh_authorized_keys:"                       | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - #MASKED#"                                                        >> "${mask_file}"
+    echo "  - ${vm['sshkey']}"                                                 >> "${temp_file}"
+  fi
+  if [ "${options['mask']}" = "true" ]; then
+    print_contents "${mask_file}"
+  else
+    print_contents "${temp_file}"
+  fi
+  execute_command "cp ${temp_file} ${vm['initcfg']}" "linuxsu"
+  execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
+}
+
+# Configure ubuntu cloud-init config file
+
+configure_ubuntu_init () {
   temp_file="/tmp/cloud-init.cfg"
   mask_file="/tmp/cloud-init.cfg.masked"
   generate_crypt
@@ -1441,6 +1515,19 @@ configure_init () {
   fi
   execute_command "cp ${temp_file} ${vm['initcfg']}" "linuxsu"
   execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
+}
+
+# Configure cloud-init
+
+configure_init () {
+  case "${vm['osname']}" in
+    ubuntu)
+      configure_ubuntu_init
+      ;;
+    alma*)
+      configure_alma_init
+      ;;
+  esac
 }
 
 # Configure network
@@ -1642,18 +1729,37 @@ reset_defaults () {
   if [ "${options['dryrun']}" = "true" ]; then
     verbose_message "Enabling dryrun mode"                                "notice"
   fi
-  verbose_message "Setting OS name to \"${vm['osname']}\""                 "notice"
   if [ "${vm['arch']}" = "" ]; then
     vm['arch']="${os['arch']}"
   fi
-  if [ "${vm['osname']}" = "opnsense" ]; then
-    vm['arch']="amd64"
-    if [ "${os['arch']}" != "amd64" ]; then
-      vm['cputype']="qemu64"
-    fi
-    options['localds']="false"
-  fi
-  verbose_message "Setting arch to \"${vm['arch']}\""                     "notice"
+  case "${vm['osname']}" in 
+    opn*|OPN*)
+      vm['osname']="opnsense"
+      vm['arch']="amd64"
+      vm['isoarch']="amd64"
+      if [ "${os['arch']}" != "amd64" ]; then
+        vm['cputype']="qemu64"
+      fi
+      options['localds']="false"
+      ;;
+    ubuntu|Ubuntu) 
+      vm['osname']="ubuntu"
+      vm['arch']="${os['arch']}"
+      vm['isoarch']="${os['arch']}"
+      ;;
+    alma*|Alma*)
+      vm['osname']="almalinux"
+      if [ "${os['arch']}" = "amd64" ]; then
+        vm['isoarch']="x86_64"
+      fi
+      if [ "${os['arch']}" = "arm64" ]; then
+        vm['isoarch']="aarch64"
+      fi
+      ;;
+  esac
+  verbose_message "Setting OS name to \"${vm['osname']}\""                 "notice"
+  verbose_message "Setting VM arch to \"${vm['arch']}\""                  "notice"
+  verbose_message "Setting ISO arch to \"${vm['isoarch']}\""              "notice"
   if [ "${vm['cputype']}" = "" ]; then
     vm['cputype']="${defaults['cputype']}"
   fi
@@ -1675,24 +1781,24 @@ reset_defaults () {
   fi
   verbose_message "Setting VM size to \"${vm['size']}\""                  "notice"
   case "${vm['osname']}" in 
-    "ubuntu")
+    ubuntu)
       if [ "${vm['release']}" = "" ]; then
         if [ "${vm['codename']}" = "" ]; then
           vm['release']="${defaults['release']}"
         else
-          get_ubuntu_release_from_codename
+          get_codename
         fi
       fi
       ;;
-    "opnsense")
+    opnsense|alma*)
       if [ "${vm['release']}" = "" ]; then
-        get_opnsense_release
+        get_release
       fi
       if [ "${vm['osvariant']}" = "" ]; then
-        get_opnsense_osvariant
+        get_osvariant
       fi
       if [ "${vm['codename']}" = "" ]; then
-        get_opnsense_codename
+        get_codename
       fi
       ;;
     *)      
@@ -1747,30 +1853,35 @@ reset_defaults () {
   if [ ! "${vm['machine']}" = "" ]; then
     verbose_message "Setting machine to \"${vm['machine']}\""             "notice"
   fi
+  vm['majorrelease']=$( echo "${vm['release']}" | cut -f1 -d. )
+  vm['minorrelease']=$( echo "${vm['release']}" | cut -f2 -d. )
   case "${vm['osname']}" in
-    "ubuntu")
+    ubuntu)
       if [ "${vm['imagefile']}" = "" ]; then
         if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
           if [ "${vm['codename']}" = "" ]; then
-            get_ubuntu_codename_from_release
+            get_codename
           fi
-          vm['imagefile']="${vm['codename']}-server-cloudimg-${os['arch']}.img"
+          vm['imagefile']="${vm['codename']}-server-cloudimg-${vm['isoarch']}.img"
         else
-          vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${os['arch']}.img"
+          vm['imagefile']="ubuntu-${vm['release']}-server-cloudimg-${vm['isoarch']}.img"
         fi
       fi
       ;;
-    "opnsense")
-      vm['imagefile']="OPNsense-${vm['release']}-${vm['codename']}-${vm['arch']}.img.bz2"
+    opnsense)
+      vm['imagefile']="OPNsense-${vm['release']}-${vm['codename']}-${vm['isoarch']}.img.bz2"
+      ;;
+    alma*)
+      vm['imagefile']="AlmaLinux-${vm['majorrelease']}-GenericCloud-latest.${vm['isoarch']}.qcow2"
       ;;
   esac 
   verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""         "notice"
   case "${vm['osname']}" in
-    "ubuntu")
+    ubuntu)
       if [ "${vm['imageurl']}" = "" ]; then
         if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
           if [ "${vm['codename']}" = "" ]; then
-            get_ubuntu_codename_from_release
+            get_codename
           fi
           vm['imageurl']="https://cloud-images.ubuntu.com/${vm['codename']}/current/${vm['imagefile']}"
         else
@@ -1778,14 +1889,19 @@ reset_defaults () {
         fi
       fi
       ;;
-    "opnsense")
+    opnsense)
       if [ "${vm['imageurl']}" = "" ]; then
-        vm['imageurl']="https://mirror.ams1.nl.leaseweb.net/opnsense/releases/${vm['release']}/OPNsense-${vm['release']}-${vm['codename']}-${vm['arch']}.img.bz2"
+        vm['imageurl']="https://mirror.ams1.nl.leaseweb.net/opnsense/releases/${vm['release']}/OPNsense-${vm['release']}-${vm['codename']}-${vm['isoarch']}.img.bz2"
       fi
       ;;
-    "debian")
+    debian)
       if [ "${vm['imageurl']}" = "" ]; then
         vm['imageurl']="https://cdimage.debian.org/debian-cd/${vm['release']}/amd64/cloud/${vm['imagefile']}"
+      fi
+      ;;
+    alma*)
+      if [ "${vm['imageurl']}" = "" ]; then
+        vm['imageurl']="https://repo.almalinux.org/almalinux/${vm['release']}/cloud/${vm['isoarch']}/images/${vm['imagefile']}"
       fi
       ;;
     *)      
@@ -1846,11 +1962,7 @@ reset_defaults () {
   fi
   verbose_message "Setting release directory to \"${vm['releasedir']}\""  "notice"
   if [ "${vm['osvariant']}" = "" ]; then
-    if [ "${vm['release']}" = "26.04" ]; then
-      vm['osvariant']="ubuntu25.10"
-    else
-      vm['osvariant']="ubuntu${vm['release']}"
-    fi
+    get_osvariant
   fi
   verbose_message "Setting OS variant to \"${vm['osvariant']}\""          "notice"
   if [ "${vm['postscript']}" = "" ]; then
@@ -1866,15 +1978,25 @@ reset_defaults () {
   fi
   verbose_message "Setting cache to \"${vm['cachedir']}\""                "notice"
   if [ "${vm['username']}" = "" ]; then
-    if [[ "${actions}" =~ "password" ]]; then
-      vm['username']="root"
-    else
-      vm['username']="${defaults['username']}"
-    fi
+    case "${vm['osname']}" in
+      ubuntu)
+        vm['username']="${defaults['username']}"
+        ;;
+      alma*)
+        vm['username']="almalinux"
+        ;;
+    esac
   fi
   verbose_message "Setting username to \"${vm['username']}\""             "notice"
   if [ "${vm['password']}" = "" ]; then
-    vm['password']="${defaults['password']}"
+    case "${vm['osname']}" in
+      ubuntu)
+        vm['password']="${defaults['password']}"
+        ;;
+      alma*)
+        vm['password']="almalinux"
+        ;;
+    esac
   fi
   verbose_message "Setting password to \"${vm['password']}\""             "notice"
   if [ "${vm['userid']}" = "" ]; then
@@ -1930,8 +2052,6 @@ reset_defaults () {
     verbose_message "Seting DNS server to \"${vm['dns']}\""               "notice"
   fi
   create_libvirt_dir "${vm['releasedir']}"
-  vm['majorrelease']=$( echo "${vm['release']}" | cut -f1 -d. )
-  vm['minorrelease']=$( echo "${vm['release']}" | cut -f2 -d. )
   if [[ ${vm['shell']} =~ zsh ]]; then
     vm['packages']="${vm['packages']},zsh"
   fi
@@ -2131,6 +2251,14 @@ process_actions () {
 process_options () {
   option="$1"
   case "${option}" in
+    chpasswd)       # option
+      # Change password on login
+      options['chpasswd']="true"
+      ;;
+    nochpasswd)     # option
+      # Don't change password on login
+      options['chpasswd']="false"
+      ;;
     debug)          # option
       # Enable debug mode
       options['debug']="true"
@@ -2204,13 +2332,21 @@ process_options () {
       # Enable masking of password and ssh keys
       options['mask']="true"
       ;;
-    nopassthrough)    # option
+    nopassthrough)  # option
       # Enable passthrough
       options['passthrough']="false"
       ;;
     passthrough)    # option
       # Enable passthrough
       options['passthrough']="true"
+      ;;
+    pwauth)         # option
+      # Enable password authentication
+      options['pwauth']="true"
+      ;;
+    nopwauth)       # option
+      # Disable password authentication
+      options['pwauth']="false"
       ;;
     noreboot)       # option
       # Disable reboot
@@ -2336,6 +2472,16 @@ while test $# -gt 0; do
     --check*)                 # switch
       # Check VM configuration
       actions_list+=("checkconfig")
+      shift
+      ;;
+    --chpasswd)               # switch
+      # Change password on login
+      options['chpasswd']="true"
+      shift
+      ;;
+    --nochpasswd)             # switch
+      # Don't change password on logib
+      options['chpasswd']="false"
       shift
       ;;
     --cidr)                   # switch
@@ -2746,6 +2892,16 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       vm['power']="$2"
       shift 2
+      ;;
+    --pwauth)                 # switch
+      # Enable password authentication
+      options['pwauth']="true"
+      shift
+      ;;
+    --nopwauth)               # switch
+      # Disable password authentication
+      options['pwauth']="false"
+      shift
       ;;
     --ram)                    # switch
       # Amount of VM RAM
