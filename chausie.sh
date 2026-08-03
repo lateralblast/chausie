@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.4
+# Version:      1.3.5
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -25,8 +25,11 @@ declare -A os
 declare -A vm
 declare -A cli
 declare -A script
+declare -A ubuntu
 declare -A options
 declare -A defaults
+declare -A opnsense
+declare -A almalinux
 declare -a actions_list
 declare -a options_list
 
@@ -470,13 +473,13 @@ get_osvariant () {
 get_release () {
   case "${vm['osname']}" in
     opnsense)
-      vm['release']="26.7"
+      vm['release']="${opnsense['release']}"
       ;;
     ubuntu)
       get_ubuntu_release_from_codename
       ;;
     alma*)
-      vm['release']="10" 
+      vm['release']="${almalinux['release']}" 
       ;;
   esac
 }
@@ -671,7 +674,6 @@ set_defaults () {
   defaults['userid']="1000"
   defaults['netdev']="enp1s0"
   defaults['netbus']="virtio"
-  defaults['release']="26.04"
   defaults['nettype']="bridge"
   defaults['groupid']="1000"
   defaults['sudoers']="ALL=(ALL) NOPASSWD:ALL"
@@ -680,6 +682,19 @@ set_defaults () {
   defaults['packages']="ansible"
   defaults['username']="cloudadmin"
   defaults['password']="cloudadmin"
+  # OS specific defaults
+  # Ubuntu defaults
+  ubuntu['netdev']="enp1s0"
+  ubuntu['release']="26.04"
+  ubuntu['username']="cloudadmin"
+  ubuntu['password']="cloudadmin"
+  # Alma Linux defaults
+  almalinux['netdev']="eth0"
+  almalinux['release']="10.2"
+  almalinux['username']="almalinux"
+  almalinux['password']="almalinux"
+  # OPNsense defaults
+  opnsense['release']="26.7"
   if [ "${os['name']}" = "Darwin" ]; then
     os['installedpackages']=$( brew list )
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
@@ -1784,7 +1799,7 @@ reset_defaults () {
     ubuntu)
       if [ "${vm['release']}" = "" ]; then
         if [ "${vm['codename']}" = "" ]; then
-          vm['release']="${defaults['release']}"
+          vm['release']="${ubuntu['release']}"
         else
           get_codename
         fi
@@ -1832,10 +1847,13 @@ reset_defaults () {
   verbose_message "Setting net bus to \"${vm['netbus']}\""                "notice"
   if [ "${vm['netdev']}" = "" ]; then
     case "${vm['osname']}" in
-      alma*)
-        vm['netdev']="eth0"
-        ;; 
       ubuntu)
+        vm['netdev']="${ubuntu['netdev']}"
+        ;;
+      almalinux)
+        vm['netdev']="${almalinux['netdev']}"
+        ;;
+      *)
         vm['netdev']="${defaults['netdev']}"
         ;;
     esac
@@ -1987,10 +2005,10 @@ reset_defaults () {
   if [ "${vm['username']}" = "" ]; then
     case "${vm['osname']}" in
       ubuntu)
-        vm['username']="${defaults['username']}"
+        vm['username']="${ubuntu['username']}"
         ;;
       alma*)
-        vm['username']="almalinux"
+        vm['username']="${almalinux['username']}"
         ;;
     esac
   fi
@@ -1998,10 +2016,10 @@ reset_defaults () {
   if [ "${vm['password']}" = "" ]; then
     case "${vm['osname']}" in
       ubuntu)
-        vm['password']="${defaults['password']}"
+        vm['password']="${ubuntu['password']}"
         ;;
       alma*)
-        vm['password']="almalinux"
+        vm['password']="${almalinux['password']}"
         ;;
     esac
   fi

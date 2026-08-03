@@ -15,12 +15,13 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.3.4
+Current version 1.3.5
 
 Supported Distributions
 -----------------------
 
 - Ubuntu
+- AlmaLinux
 - OPNsense
 
 Prerequisites
