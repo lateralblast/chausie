@@ -272,3 +272,5 @@
 # Started to add OS specific defaults
 # 1.3.6: Tue  4 Aug 2026 16:45:21 AEST
 # Fixed chained actions
+# 1.3.7: Mon Aug  3 05:31:10 PM AEST 2026
+# Added inital Rock Linux support

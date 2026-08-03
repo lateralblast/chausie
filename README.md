@@ -15,14 +15,26 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.3.6
+Current version 1.3.7
 
 Supported Distributions
 -----------------------
 
 - Ubuntu
-- AlmaLinux
+- Alma Linux
+- Rocky Linux
 - OPNsense
+
+Defaults
+--------
+
+The defualt username and passwords are set to ubuntu, almalinux and rocky
+
+Issues
+------
+
+Current Issues:
+- Rocky Linux and Alma Linux currently only support cloud-init changing the default user password
 
 Prerequisites
 -------------

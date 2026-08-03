@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.6
+# Version:      1.3.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -30,6 +30,7 @@ declare -A options
 declare -A defaults
 declare -A opnsense
 declare -A almalinux
+declare -A rockylinux
 declare -a actions_list
 declare -a options_list
 
@@ -465,6 +466,9 @@ get_osvariant () {
       release_major=$( echo "${vm['release']}" | cut -d. -f1 )
       vm['osvariant']="almalinux${release_major}"
       ;;
+    rocky*)
+      vm['osvariant']="rocky9"
+      ;;
   esac
 }
 
@@ -481,6 +485,9 @@ get_release () {
     alma*)
       vm['release']="${almalinux['release']}" 
       ;;
+    rocky*)
+      vm['release']="${rockylinux['release']}" 
+      ;;
   esac
 }
 
@@ -496,6 +503,9 @@ get_codename () {
       ;;
     alma*)
       vm['codename']="GenericCloud-latest"
+      ;;
+    rocky*)
+      vm['codename']="GenericCloud.latest"
       ;;
   esac
 }
@@ -686,8 +696,8 @@ set_defaults () {
   # Ubuntu defaults
   ubuntu['netdev']="enp1s0"
   ubuntu['release']="26.04"
-  ubuntu['username']="cloudadmin"
-  ubuntu['password']="cloudadmin"
+  ubuntu['username']="ubuntu"
+  ubuntu['password']="ubuntu"
   # Alma Linux defaults
   almalinux['netdev']="eth0"
   almalinux['release']="10.2"
@@ -695,12 +705,17 @@ set_defaults () {
   almalinux['password']="almalinux"
   # OPNsense defaults
   opnsense['release']="26.7"
+  # Rocky Linux defaults
+  rockylinux['netdev']="eth0"
+  rockylinux['release']="10.2"
+  rockylinux['username']="rocky"
+  rockylinux['password']="rocky"
   if [ "${os['name']}" = "Darwin" ]; then
     os['installedpackages']=$( brew list )
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
     defaults['bridge']="en0"
   else
-    os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' )
+    os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' | cut -f1 -d: )
     os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev"
     defaults['bridge']="br0"
   fi
@@ -959,7 +974,7 @@ create_disk () {
       ;;
     esac
     case "${vm['osname']}" in
-      ubuntu|alma*) 
+      ubuntu|alma*|rocky*) 
         if [ "${options['backing']}" = "true" ]; then
           execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
         else
@@ -984,7 +999,7 @@ create_vm () {
   create_disk
   fix_libvirt_perms "${vm['disk']}"
   if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
-    if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ]; then
+    if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ] || [ "${vm['osname']}" = "rockylinux" ]; then
       if [ "${options['localds']}" = "true" ]; then
         configure_network
         configure_init
@@ -1479,6 +1494,32 @@ configure_alma_init () {
   execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
 }
 
+# Configure rocky linux cloud-init config file
+
+configure_rocky_init () {
+  temp_file="/tmp/cloud-init.cfg"
+  mask_file="/tmp/cloud-init.cfg.masked"
+  generate_crypt
+  echo "#cloud-config"                                | tee "${mask_file}"      > "${temp_file}"
+  echo "ssh_pwauth: ${options['pwauth']}"             | tee "${mask_file}"     >> "${temp_file}"
+  echo "password: #MASKED#"                                                    >> "${mask_file}"
+  echo "password: ${vm['password']}"                                           >> "${temp_file}"
+  echo "chpasswd:"                                    | tee "${mask_file}"     >> "${temp_file}"
+  echo "  expire: ${options['chpasswd']}"             | tee "${mask_file}"     >> "${temp_file}"
+  if [ ! "${vm['sshkey']}" = "" ]; then
+    echo "ssh_authorized_keys:"                       | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "  - #MASKED#"                                                        >> "${mask_file}"
+    echo "  - ${vm['sshkey']}"                                                 >> "${temp_file}"
+  fi
+  if [ "${options['mask']}" = "true" ]; then
+    print_contents "${mask_file}"
+  else
+    print_contents "${temp_file}"
+  fi
+  execute_command "cp ${temp_file} ${vm['initcfg']}" "linuxsu"
+  execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
+}
+
 # Configure ubuntu cloud-init config file
 
 configure_ubuntu_init () {
@@ -1541,6 +1582,9 @@ configure_init () {
       ;;
     alma*)
       configure_alma_init
+      ;;
+    rocky*)
+      configure_rocky_init
       ;;
   esac
 }
@@ -1762,8 +1806,12 @@ reset_defaults () {
       vm['arch']="${os['arch']}"
       vm['isoarch']="${os['arch']}"
       ;;
-    alma*|Alma*)
-      vm['osname']="almalinux"
+    alma*|Alma*|rocky*|Rocky*)
+      if [ "${vm['osname']}" = "rockylinux" ]; then
+        vm['osname']="rockylinux"
+      else
+        vm['osname']="almalinux"
+      fi
       if [ "${os['arch']}" = "amd64" ]; then
         vm['isoarch']="x86_64"
       fi
@@ -1805,7 +1853,7 @@ reset_defaults () {
         fi
       fi
       ;;
-    opnsense|alma*)
+    opnsense|alma*|rocky*)
       if [ "${vm['release']}" = "" ]; then
         get_release
       fi
@@ -1853,6 +1901,9 @@ reset_defaults () {
       almalinux)
         vm['netdev']="${almalinux['netdev']}"
         ;;
+      rockylinux)
+        vm['netdev']="${rockylinux['netdev']}"
+        ;;
       *)
         vm['netdev']="${defaults['netdev']}"
         ;;
@@ -1897,7 +1948,10 @@ reset_defaults () {
       vm['imagefile']="OPNsense-${vm['release']}-${vm['codename']}-${vm['isoarch']}.img.bz2"
       ;;
     alma*)
-      vm['imagefile']="AlmaLinux-${vm['majorrelease']}-GenericCloud-latest.${vm['isoarch']}.qcow2"
+      vm['imagefile']="AlmaLinux-${vm['majorrelease']}-${vm['codename']}.${vm['isoarch']}.qcow2"
+      ;;
+    rocky*)
+      vm['imagefile']="Rocky-${vm['majorrelease']}-${vm['codename']}.${vm['isoarch']}.qcow2"
       ;;
   esac 
   verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""         "notice"
@@ -1927,6 +1981,11 @@ reset_defaults () {
     alma*)
       if [ "${vm['imageurl']}" = "" ]; then
         vm['imageurl']="https://repo.almalinux.org/almalinux/${vm['release']}/cloud/${vm['isoarch']}/images/${vm['imagefile']}"
+      fi
+      ;;
+    rocky*)
+      if [ "${vm['imageurl']}" = "" ]; then
+        vm['imageurl']="https://dl.rockylinux.org/pub/rocky/${vm['release']}/images/${vm['isoarch']}/${vm['imagefile']}"
       fi
       ;;
     *)      
@@ -2010,6 +2069,9 @@ reset_defaults () {
       alma*)
         vm['username']="${almalinux['username']}"
         ;;
+      alma*)
+        vm['username']="${rockylinux['username']}"
+        ;;
     esac
   fi
   verbose_message "Setting username to \"${vm['username']}\""             "notice"
@@ -2020,6 +2082,9 @@ reset_defaults () {
         ;;
       alma*)
         vm['password']="${almalinux['password']}"
+        ;;
+      rocky*)
+        vm['password']="${rockylinux['password']}"
         ;;
     esac
   fi
