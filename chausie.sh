@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.3
+# Version:      1.3.4
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -41,8 +41,8 @@ script['args']="$*"
 script['file']="$0"
 script['name']="chausie"
 script['file']=$( realpath "${script['file']}" )
-script['path']=$( dirname "${script['file']}" )
-script['bin']=$( basename "${script['file']}" )
+script['path']=$( dirname  "${script['file']}" )
+script['bin']=$(  basename "${script['file']}" )
 
 export LIBGUESTFS_BACKEND=direct
 
@@ -519,7 +519,7 @@ get_gateway () {
   if [ "${os['name']}" = "Darwin" ]; then
     vm['gateway']=$( route -n get default | grep gateway | awk '{print $2}' )
   else
-    vm['gateway']=$( ip r | grep default | awk '{print $3}' )
+    vm['gateway']=$( ip r | grep default | head -1 | awk '{print $3}' )
   fi
 }
 
@@ -1831,7 +1831,14 @@ reset_defaults () {
   fi
   verbose_message "Setting net bus to \"${vm['netbus']}\""                "notice"
   if [ "${vm['netdev']}" = "" ]; then
-    vm['netdev']="${defaults['netdev']}"
+    case "${vm['osname']}" in
+      alma*)
+        vm['netdev']="eth0"
+        ;; 
+      ubuntu)
+        vm['netdev']="${defaults['netdev']}"
+        ;;
+    esac
   fi
   verbose_message "Setting net device to \"${vm['netdev']}\""             "notice"
   if [ "${vm['gateway']}" = "" ]; then
@@ -2078,7 +2085,7 @@ process_actions () {
       # Check config
       check_config
       ;;
-    connect|console)        # action
+    connect*|console)       # action
       # Connect to VM console
       connect_to_vm
       ;;
@@ -2514,7 +2521,7 @@ while test $# -gt 0; do
       vm['codename']="$2"
       shift 2
       ;;
-    --console|--connect)      # switch
+    --console|--connect*)     # switch
       # Connect to VM console
       actions_list+=("connect")
       shift
