@@ -15,7 +15,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.3.7
+Current version 1.3.8
 
 Supported Distributions
 -----------------------
@@ -28,13 +28,13 @@ Supported Distributions
 Defaults
 --------
 
-The defualt username and passwords are set to ubuntu, almalinux and rocky
+The defualt username and passwords are set to debian, ubuntu, almalinux and rocky
 
 Issues
 ------
 
 Current Issues:
-- Rocky Linux and Alma Linux currently only support cloud-init changing the default user password
+- Debian, Rocky, Alma Linux currently only support cloud-init changing the default user password
 
 Prerequisites
 -------------

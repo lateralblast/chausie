@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.7
+# Version:      1.3.8
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -24,8 +24,10 @@
 declare -A os
 declare -A vm
 declare -A cli
+declare -A iso
 declare -A script
 declare -A ubuntu
+declare -A debian
 declare -A options
 declare -A defaults
 declare -A opnsense
@@ -164,7 +166,35 @@ check_shellcheck () {
   fi
 }
 
-# Get Ubuntu Codename from release
+# Get Debian Codename from Release
+
+get_debian_codename_from_release () {
+  case "${vm['release']}" in
+    "15")
+      vm['codename']="duke"
+      ;;
+    "14")
+      vm['codename']="forky"
+      ;;
+    "13")
+      vm['codename']="trixie"
+      ;;
+    "12")
+      vm['codename']="bookworm"
+      ;;
+    "11")
+      vm['codename']="bullseye"
+      ;;
+    "10")
+      vm['codename']="buster"
+      ;;
+    "9")
+      vm['codename']="stretch"
+      ;;
+  esac
+}
+
+# Get Ubuntu Codename from Release
 
 get_ubuntu_codename_from_release () {
   case "${vm['release']}" in
@@ -302,6 +332,31 @@ get_ubuntu_codename_from_release () {
       ;;
     "26.10")
       vm['codename']="stonking" 
+      ;;
+  esac
+}
+
+# Get Debian Release from Codename
+
+get_debian_release_from_codename () {
+  case "${vm['codename']}" in
+    duke)
+      vm['release']="15"
+      ;;
+    forky)
+      vm['release']="14"
+      ;;
+    trixie)
+      vm['release']="13"
+      ;;
+    bookworm)
+      vm['release']="12"
+      ;;
+    buster)
+      vm['release']="10"
+      ;;
+    stretch)
+      vm['release']="9"
       ;;
   esac
 }
@@ -455,6 +510,13 @@ get_osvariant () {
     opnsense)
       vm['osvariant']="freebsd14.2"
       ;;
+    debian)
+      if [ "${vm['release']}" -gt 14 ]; then
+        vm['osvariant']="debian13"
+      else
+        vm['osvariant']="debian${vm['release']}"
+      fi
+      ;;
     ubuntu)
       if [ "${vm['release']}" = "26.04" ]; then
         vm['osvariant']="ubuntu25.10"
@@ -479,8 +541,11 @@ get_release () {
     opnsense)
       vm['release']="${opnsense['release']}"
       ;;
-    ubuntu)
+    ubuntu*)
       get_ubuntu_release_from_codename
+      ;;
+    debian*)
+      get_debian_release_from_codename
       ;;
     alma*)
       vm['release']="${almalinux['release']}" 
@@ -496,16 +561,20 @@ get_release () {
 get_codename () {
   case "${vm['osname']}" in
     opnsense)
-      vm['codename']="nano"
+      iso['codename']="nano"
       ;;
-    ubuntu)
+    ubuntu*)
       get_ubuntu_codename_from_release
       ;;
+    debian*)
+      get_debian_codename_from_release
+      iso['codename']="genericcloud"
+      ;;
     alma*)
-      vm['codename']="GenericCloud-latest"
+      iso['codename']="GenericCloud-latest"
       ;;
     rocky*)
-      vm['codename']="GenericCloud.latest"
+      iso['codename']="GenericCloud.latest"
       ;;
   esac
 }
@@ -710,6 +779,14 @@ set_defaults () {
   rockylinux['release']="10.2"
   rockylinux['username']="rocky"
   rockylinux['password']="rocky"
+  # Debian defaults
+  debian['netdev']="enp1s0"
+  debian['release']="13"
+  debian['codename']="trixie"
+  debian['username']="debian"
+  debian['password']="debian"
+  # ISO defaults
+  iso['codename']=""
   if [ "${os['name']}" = "Darwin" ]; then
     os['installedpackages']=$( brew list )
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
@@ -974,7 +1051,7 @@ create_disk () {
       ;;
     esac
     case "${vm['osname']}" in
-      ubuntu|alma*|rocky*) 
+      ubuntu|alma*|rocky*|debian*) 
         if [ "${options['backing']}" = "true" ]; then
           execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
         else
@@ -999,7 +1076,7 @@ create_vm () {
   create_disk
   fix_libvirt_perms "${vm['disk']}"
   if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
-    if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ] || [ "${vm['osname']}" = "rockylinux" ]; then
+    if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ] || [ "${vm['osname']}" = "rockylinux" ] || [ "${vm['osname']}" = "debian" ]; then
       if [ "${options['localds']}" = "true" ]; then
         configure_network
         configure_init
@@ -1468,9 +1545,9 @@ generate_crypt () {
   fi
 }
 
-# Configure alma cloud-init config file
+# Configure default simple cloud-init config file
 
-configure_alma_init () {
+configure_default_init () {
   temp_file="/tmp/cloud-init.cfg"
   mask_file="/tmp/cloud-init.cfg.masked"
   generate_crypt
@@ -1494,30 +1571,22 @@ configure_alma_init () {
   execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
 }
 
-# Configure rocky linux cloud-init config file
+# Configure Alma Linux cloud-init config file
+
+configure_alma_init () {
+  configure_default_init
+}
+
+# Configure Rocky Linux cloud-init config file
 
 configure_rocky_init () {
-  temp_file="/tmp/cloud-init.cfg"
-  mask_file="/tmp/cloud-init.cfg.masked"
-  generate_crypt
-  echo "#cloud-config"                                | tee "${mask_file}"      > "${temp_file}"
-  echo "ssh_pwauth: ${options['pwauth']}"             | tee "${mask_file}"     >> "${temp_file}"
-  echo "password: #MASKED#"                                                    >> "${mask_file}"
-  echo "password: ${vm['password']}"                                           >> "${temp_file}"
-  echo "chpasswd:"                                    | tee "${mask_file}"     >> "${temp_file}"
-  echo "  expire: ${options['chpasswd']}"             | tee "${mask_file}"     >> "${temp_file}"
-  if [ ! "${vm['sshkey']}" = "" ]; then
-    echo "ssh_authorized_keys:"                       | tee -a "${mask_file}"  >> "${temp_file}"
-    echo "  - #MASKED#"                                                        >> "${mask_file}"
-    echo "  - ${vm['sshkey']}"                                                 >> "${temp_file}"
-  fi
-  if [ "${options['mask']}" = "true" ]; then
-    print_contents "${mask_file}"
-  else
-    print_contents "${temp_file}"
-  fi
-  execute_command "cp ${temp_file} ${vm['initcfg']}" "linuxsu"
-  execute_command "chmod 644 ${vm['initcfg']}"       "linuxsu"
+  configure_default_init
+}
+
+# Configure Debian cloud-init config file
+
+configure_debian_init () {
+  configure_default_init
 }
 
 # Configure ubuntu cloud-init config file
@@ -1585,6 +1654,9 @@ configure_init () {
       ;;
     rocky*)
       configure_rocky_init
+      ;;
+    debian*)
+      configure_debian_init
       ;;
   esac
 }
@@ -1801,8 +1873,13 @@ reset_defaults () {
       fi
       options['localds']="false"
       ;;
-    ubuntu|Ubuntu) 
+    ubuntu*|Ubuntu*) 
       vm['osname']="ubuntu"
+      vm['arch']="${os['arch']}"
+      vm['isoarch']="${os['arch']}"
+      ;;
+    debian*|Debian*) 
+      vm['osname']="debian"
       vm['arch']="${os['arch']}"
       vm['isoarch']="${os['arch']}"
       ;;
@@ -1843,11 +1920,28 @@ reset_defaults () {
     vm['size']="${defaults['size']}"
   fi
   verbose_message "Setting VM size to \"${vm['size']}\""                  "notice"
+  if [ "${vm['release']}" = "" ]; then
+    get_release
+  fi
+  verbose_message "Setting VM OS release to \"${vm['release']}\""         "notice"
+  if [ "${vm['codename']}" = "" ]; then
+    get_codename
+  fi
+  verbose_message "Setting VM OS codename to \"${vm['codename']}\""       "notice"
   case "${vm['osname']}" in 
-    ubuntu)
+    ubuntu*)
       if [ "${vm['release']}" = "" ]; then
         if [ "${vm['codename']}" = "" ]; then
           vm['release']="${ubuntu['release']}"
+        else
+          get_codename
+        fi
+      fi
+      ;;
+    debian*)
+      if [ "${vm['release']}" = "" ]; then
+        if [ "${vm['codename']}" = "" ]; then
+          vm['release']="${debian['release']}"
         else
           get_codename
         fi
@@ -1860,7 +1954,7 @@ reset_defaults () {
       if [ "${vm['osvariant']}" = "" ]; then
         get_osvariant
       fi
-      if [ "${vm['codename']}" = "" ]; then
+      if [ "${iso['codename']}" = "" ]; then
         get_codename
       fi
       ;;
@@ -1895,14 +1989,17 @@ reset_defaults () {
   verbose_message "Setting net bus to \"${vm['netbus']}\""                "notice"
   if [ "${vm['netdev']}" = "" ]; then
     case "${vm['osname']}" in
-      ubuntu)
+      ubuntu*)
         vm['netdev']="${ubuntu['netdev']}"
         ;;
-      almalinux)
+      alma*)
         vm['netdev']="${almalinux['netdev']}"
         ;;
-      rockylinux)
+      rocky*)
         vm['netdev']="${rockylinux['netdev']}"
+        ;;
+      debian*)
+        vm['netdev']="${debian['netdev']}"
         ;;
       *)
         vm['netdev']="${defaults['netdev']}"
@@ -1932,7 +2029,7 @@ reset_defaults () {
   vm['majorrelease']=$( echo "${vm['release']}" | cut -f1 -d. )
   vm['minorrelease']=$( echo "${vm['release']}" | cut -f2 -d. )
   case "${vm['osname']}" in
-    ubuntu)
+    ubuntu*)
       if [ "${vm['imagefile']}" = "" ]; then
         if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
           if [ "${vm['codename']}" = "" ]; then
@@ -1945,18 +2042,21 @@ reset_defaults () {
       fi
       ;;
     opnsense)
-      vm['imagefile']="OPNsense-${vm['release']}-${vm['codename']}-${vm['isoarch']}.img.bz2"
+      vm['imagefile']="OPNsense-${vm['release']}-${iso['codename']}-${vm['isoarch']}.img.bz2"
       ;;
     alma*)
-      vm['imagefile']="AlmaLinux-${vm['majorrelease']}-${vm['codename']}.${vm['isoarch']}.qcow2"
+      vm['imagefile']="AlmaLinux-${vm['majorrelease']}-${iso['codename']}.${vm['isoarch']}.qcow2"
       ;;
     rocky*)
-      vm['imagefile']="Rocky-${vm['majorrelease']}-${vm['codename']}.${vm['isoarch']}.qcow2"
+      vm['imagefile']="Rocky-${vm['majorrelease']}-${iso['codename']}.${vm['isoarch']}.qcow2"
+      ;;
+    debian*)
+      vm['imagefile']="debian-${vm['majorrelease']}-${iso['codename']}-${vm['isoarch']}.qcow2"
       ;;
   esac 
   verbose_message "Setting Cloud Image to \"${vm['imagefile']}\""         "notice"
   case "${vm['osname']}" in
-    ubuntu)
+    ubuntu*)
       if [ "${vm['imageurl']}" = "" ]; then
         if [ "${vm['release']}" = "${vm['devrelease']}" ]; then
           if [ "${vm['codename']}" = "" ]; then
@@ -1973,11 +2073,6 @@ reset_defaults () {
         vm['imageurl']="https://mirror.ams1.nl.leaseweb.net/opnsense/releases/${vm['release']}/OPNsense-${vm['release']}-${vm['codename']}-${vm['isoarch']}.img.bz2"
       fi
       ;;
-    debian)
-      if [ "${vm['imageurl']}" = "" ]; then
-        vm['imageurl']="https://cdimage.debian.org/debian-cd/${vm['release']}/amd64/cloud/${vm['imagefile']}"
-      fi
-      ;;
     alma*)
       if [ "${vm['imageurl']}" = "" ]; then
         vm['imageurl']="https://repo.almalinux.org/almalinux/${vm['release']}/cloud/${vm['isoarch']}/images/${vm['imagefile']}"
@@ -1986,6 +2081,14 @@ reset_defaults () {
     rocky*)
       if [ "${vm['imageurl']}" = "" ]; then
         vm['imageurl']="https://dl.rockylinux.org/pub/rocky/${vm['release']}/images/${vm['isoarch']}/${vm['imagefile']}"
+      fi
+      ;;
+    debian*)
+      if [ "${vm['imageurl']}" = "" ]; then
+        if [ "${vm['codename']}" = "" ]; then
+          get_codename
+        fi
+        vm['imageurl']="https://cloud.debian.org/images/cloud/${vm['codename']}/latest/${vm['imagefile']}"
       fi
       ;;
     *)      
@@ -2063,21 +2166,24 @@ reset_defaults () {
   verbose_message "Setting cache to \"${vm['cachedir']}\""                "notice"
   if [ "${vm['username']}" = "" ]; then
     case "${vm['osname']}" in
-      ubuntu)
+      ubuntu*)
         vm['username']="${ubuntu['username']}"
         ;;
       alma*)
         vm['username']="${almalinux['username']}"
         ;;
-      alma*)
+      rocky*)
         vm['username']="${rockylinux['username']}"
+        ;;
+      debian*)
+        vm['username']="${debian['username']}"
         ;;
     esac
   fi
   verbose_message "Setting username to \"${vm['username']}\""             "notice"
   if [ "${vm['password']}" = "" ]; then
     case "${vm['osname']}" in
-      ubuntu)
+      ubuntu*)
         vm['password']="${ubuntu['password']}"
         ;;
       alma*)
@@ -2085,6 +2191,9 @@ reset_defaults () {
         ;;
       rocky*)
         vm['password']="${rockylinux['password']}"
+        ;;
+      debian*)
+        vm['password']="${debian['password']}"
         ;;
     esac
   fi
