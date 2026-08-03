@@ -15,7 +15,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.3.5
+Current version 1.3.6
 
 Supported Distributions
 -----------------------

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.5
+# Version:      1.3.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -3099,7 +3099,7 @@ fi
 
 if [ -n "${options_list[*]}" ]; then
   for list in "${options_list[@]}"; do
-    if [[ "${list}" =~ "," ]]; then
+    if [[ "${list}" =~ , ]]; then
       IFS="," read -r -a array <<< "${list[*]}"
       for item in "${array[@]}"; do
         process_options "${item}"
@@ -3116,7 +3116,7 @@ reset_defaults
 
 if [ -n "${actions_list[*]}" ]; then
   for list in "${actions_list[@]}"; do
-    if [[ "${list}" =~ "," ]]; then
+    if [[ "${list}" =~ , ]]; then
       IFS="," read -r -a array <<< "${list[*]}"
       for item in "${array[@]}"; do
         process_actions "${item}"
