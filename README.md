@@ -23,6 +23,7 @@ Supported Distributions
 - Ubuntu
 - Alma Linux
 - Rocky Linux
+- Debian Linux
 - OPNsense
 
 Defaults
