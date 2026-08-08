@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.3.8
+# Version:      1.4.1
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1846,6 +1846,18 @@ list_nets () {
   execute_command "virsh net-list --all" "linuxsu"
 }
 
+# Process RAM value
+
+process_ram_value () {
+  if [[ "${vm['ram']}" =~ [m|M] ]]; then
+    vm['ram']=$( echo "${vm['ram']}" | tr -d 'm|M' )
+  fi
+  if [[ "${vm['ram']}" =~ [g|G] ]]; then
+    vm['ram']=$( echo "${vm['ram']}" | tr -d 'g|G' )
+    vm['ram']=$(( "${vm['ram']}" * 1024 ))
+  fi
+}
+
 # Reset defaults
 
 reset_defaults () {
@@ -1915,6 +1927,7 @@ reset_defaults () {
   if [ "${vm['ram']}" = "" ]; then
     vm['ram']="${defaults['ram']}"
   fi
+  process_ram_value
   verbose_message "Setting VM RAM to \"${vm['ram']}\""                    "notice"
   if [ "${vm['size']}" = "" ]; then
     vm['size']="${defaults['size']}"
@@ -2263,6 +2276,74 @@ reset_defaults () {
   fi
 }
 
+# Get VM XML info
+
+get_vm_xml_info () {
+  search_list="${1}"
+  xml_data=$( virsh dumpxml "${vm['name']}" )
+  for search in ${search_list}; do
+    xml_data=$( echo "${xml_data}" | grep "${search}" )
+  done
+  xml_info=$( echo "${xml_data}" |cut -f2 -d"'" )
+}
+
+# Get domain info
+
+get_domain_info () {
+  search_string="${1}"
+  domain_info=$( virsh dominfo "${vm['name']}" | tr -s '\n' )
+  if [ ! "${search_string}" = "" ]; then
+    domain_info=$( echo "${domain_info}" |grep -i "^${search_string}" )
+  fi
+}
+
+# Print VM info
+
+print_vm_info () {
+  echo ""
+  case "${vm['getinfo']}" in
+    uuid*|cpu*|mem*|state|name|id|persist*|auto*)
+      get_domain_info "${vm['getinfo']}"
+      echo "${domain_info}"
+      ;;
+    arch*)
+      get_vm_xml_info "arch machine"
+      echo "Arch:           ${xml_info}"
+      ;;
+    disk*)
+      get_vm_xml_info "source file qcow2"
+      echo "Disk:           ${xml_info}"
+      ;;
+    firm*)
+      get_vm_xml_info "os firmware"
+      echo "Firmware:       ${xml_info}"
+      ;;
+    all)
+      get_domain_info ""
+      echo "${domain_info}"
+      get_vm_xml_info "arch machine"
+      echo "Arch:           ${xml_info}"
+      get_vm_xml_info "source file qcow2"
+      echo "Disk:           ${xml_info}"
+      get_vm_xml_info "os firmware"
+      echo "Firmware:       ${xml_info}"
+      ;;
+    *)
+      get_domain_info ""
+      echo "${domain_info}"
+      ;;
+  esac
+}
+
+# Get VM info
+
+get_vm_info () {
+  check_vm_exists
+  if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
+    print_vm_info
+  fi
+}
+
 # Process action
 
 process_actions () {
@@ -2321,6 +2402,10 @@ process_actions () {
       check_config
       delete_pool
       delete_vm
+      ;;
+    getinfo)                # action
+      # Get image
+      get_vm_info
       ;;
     getimage)               # action
       # Get image
@@ -2723,7 +2808,7 @@ while test $# -gt 0; do
       actions_list+=("copy")
       shift
       ;;
-    --cpus)                   # switch
+    --cpus|--vcps)            # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm['cpus']="$2"
@@ -2872,11 +2957,78 @@ while test $# -gt 0; do
       vm['gecos']="$2"
       shift 2
       ;;
+    --getcpu*)                # switch
+      # Get CPU info about VM
+      vm['getinfo']="cpu"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getall*)                # switch
+      # Get all info about VM
+      vm['getinfo']="all"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getauto*)               # switch
+      # Get autostart info about VM
+      vm['getinfo']="auto"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getarch*)                # switch
+      # Get arch info about VM
+      vm['getinfo']="arch"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getdisk*)               # switch
+      # Get disk info about VM
+      vm['getinfo']="disk"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getfirm*)               # switch
+      # Get firmware info about VM
+      vm['getinfo']="firmware"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getinfo|--getvminfo)    # switch
+      # Get info about VM
+      check_value "$1" "$2"
+      vm['getinfo']="$2"
+      actions_list+=("getinfo")
+      shift 2
+      ;;
+    --getid*)                 # switch
+      # Get ID info about VM
+      vm['getinfo']="id"
+      actions_list+=("getinfo")
+      shift
+      ;;
     --getimage)               # switch
       # Get Image
       get_image
       shift
       exit
+      ;;
+    --getmem*)                # switch
+      # Get memory info about VM
+      vm['getinfo']="memory"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getper*)                # switch
+      # Get persistence info about VM
+      vm['getinfo']="persist"
+      actions_list+=("getinfo")
+      shift
+      ;;
+    --getuuid)                # switch
+      # Get UUID info about VM
+      vm['getinfo']="firmware"
+      actions_list+=("getinfo")
+      shift
       ;;
     --graphics)               # switch
       # VM Graphics type
@@ -3102,7 +3254,7 @@ while test $# -gt 0; do
       options['pwauth']="false"
       shift
       ;;
-    --ram)                    # switch
+    --ram|--memory)           # switch
       # Amount of VM RAM
       check_value "$1" "$2"
       vm['ram']="$2"
@@ -3257,6 +3409,7 @@ while test $# -gt 0; do
       break
       ;;
     *)
+      echo "Invalid switch: ${1}"
       print_usage ""
       exit
       ;;

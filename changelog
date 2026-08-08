@@ -276,3 +276,9 @@
 # Added inital Rock Linux support
 # 1.3.8: Mon Aug  4 06:25:58 PM AEST 2026
 # Added initial Debian Linux support
+# 1.3.9: Fri Aug  7 02:20:03 PM AEST 2026
+# Added --vcpus and --memory switches
+# 1.4.0: Fri Aug  7 02:47:05 PM AEST 2026
+# Added code to handle M/G in memory value
+# 1.4.1: Sat Aug  8 02:12:42 PM AEST 2026
+# Added routine to get VM info
