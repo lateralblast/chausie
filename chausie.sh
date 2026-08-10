@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.4.9
+# Version:      1.5.0
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -735,6 +735,7 @@ set_defaults () {
   options['localds']="true"
   options['actions']="false"
   options['options']="false"
+  options['updates']="false"
   options['verbose']="false"
   options['backing']="true"
   options['chpasswd']="false"
@@ -1597,27 +1598,27 @@ configure_wazuh_cloud_init_app () {
     warning_message "Static IP is required for wazuh installation"
     do_exit
   fi
-#  echo "  - [ apt, update ]"                                                             | tee -a "${mask_file}"  >> "${temp_file}"
-#  echo "  - [ apt, -y, upgrade ]"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    apt install -y curl gnupg ca-certificates"                                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    ufw allow 22/tcp"                                                          | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    ufw allow 443/tcp"                                                         | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    ufw allow 1514/tcp"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    ufw allow 1515/tcp"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    ufw --force enable"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    cd /root && curl -sO \"https://packages.wazuh.com/4.14/wazuh-install.sh\""  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"nodes:\"                      > /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"  indexer:\"                 >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"  server:\"                  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"  dashboard:\"               >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    cd /root && chmod +x ./wazuh-install.sh"                                    | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "    cd /root && ./wazuh-install.sh -a -i"                                       | tee -a "${mask_file}"  >> "${temp_file}"
+  if [ "${vm['osname']}" = "ubuntu" ]; then
+    echo "    apt install -y curl gnupg ca-certificates"                                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    ufw allow 22/tcp"                                                           | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    ufw allow 443/tcp"                                                          | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    ufw allow 1514/tcp"                                                         | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    ufw allow 1515/tcp"                                                         | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    ufw --force enable"                                                         | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    cd /root && curl -sO \"https://packages.wazuh.com/4.14/wazuh-install.sh\""  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"nodes:\"                      > /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"  indexer:\"                 >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"  server:\"                  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"  dashboard:\"               >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    cd /root && chmod +x ./wazuh-install.sh"                                    | tee -a "${mask_file}"  >> "${temp_file}"
+    echo "    cd /root && ./wazuh-install.sh -a -i"                                       | tee -a "${mask_file}"  >> "${temp_file}"
+  fi
 #  echo "    "            | tee -a "${mask_file}"  >> "${temp_file}"
 }
 
@@ -1694,6 +1695,12 @@ configure_ubuntu_init () {
   fi
   if [ ! "${vm['runcmd']}" = "" ]; then
     echo "    ${vm['runcmd']}"                        | tee -a "${mask_file}"  >> "${temp_file}"
+  fi
+  if [ "${options['updates']}" = "true" ]; then
+    if [ "${vm['osname']}" = "ubuntu" ]; then
+      echo "    apt update"                           | tee -a "${mask_file}"  >> "${temp_file}"
+      echo "    apt -y upgrade"                       | tee -a "${mask_file}"  >> "${temp_file}"
+    fi
   fi
   if [ ! "${vm['apps']}" = "" ]; then
     configure_cloud_init_apps
@@ -2741,6 +2748,10 @@ process_options () {
       # Enable strict mode
       options['strict']="true"
       ;;
+    updates)        # option
+      # Enable updates
+      options['updates']="true"
+      ;;
     verbose)        # option
       # Enable verbose mode
       options['verbose']="true"
@@ -3481,6 +3492,11 @@ while test $# -gt 0; do
       check_value "$1" "$2"
       vm['username']="$2"
       shift 2
+      ;;
+    --updates)                # switch
+      # Install updates
+      options['updates']="true"
+      shift
       ;;
     --verbose)                # switch
       # Run in verbose mode
