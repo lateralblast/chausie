@@ -15,7 +15,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.4.1
+Current version 1.4.6
 
 Supported Distributions
 -----------------------
@@ -29,7 +29,7 @@ Supported Distributions
 Defaults
 --------
 
-The defualt username and passwords are set to debian, ubuntu, almalinux and rocky
+The defualt username and passwords are set to debian, ubuntulinux, almalinux and rocky
 
 Issues
 ------

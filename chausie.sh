@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.4.1
+# Version:      1.4.6
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -765,8 +765,8 @@ set_defaults () {
   # Ubuntu defaults
   ubuntu['netdev']="enp1s0"
   ubuntu['release']="26.04"
-  ubuntu['username']="ubuntu"
-  ubuntu['password']="ubuntu"
+  ubuntu['username']="ubuntulinux"
+  ubuntu['password']="ubuntulinux"
   # Alma Linux defaults
   almalinux['netdev']="eth0"
   almalinux['release']="10.2"
@@ -1143,6 +1143,7 @@ create_vm () {
     fi
     command="virt-install --import ${cli['name']} ${cli['memory']} ${cli['vcpus']} ${cli['cputype']} ${cli['disk']} ${cli['network']} ${cli['osvariant']} ${cli['autoconsole']} ${cli['graphics']} ${cli['boot']} ${cli['autostart']} ${cli['reboot']} ${cli['hostdevice']} ${cli['features']}"
     execute_command "${command}" "linuxsu"
+    information_message "${script['file']} --action startvm,connect --name ${vm['name']}"
     if [ "${options['localds']}" = "false" ]; then
       create_keys
     fi
@@ -1589,6 +1590,63 @@ configure_debian_init () {
   configure_default_init
 }
 
+# Add wazuh commands to runcmd
+
+configure_wazuh_cloud_init_app () {
+  if [ "${vm['ip']}" = "" ]; then
+    warning_message "Static IP is required for wazuh installation"
+    do_exit
+  fi
+  echo "  - sudo apt update"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo apt install -y curl gnupg ca-certificates"                         | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo ufw allow 22/tcp"                                                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo ufw allow 443/tcp"                                                 | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo ufw allow 1514/tcp"                                                | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo ufw allow 1515/tcp"                                                | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - sudo ufw --force enable"                                                | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - cd /root && curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh"  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"nodes:\"                   > /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"  indexer:\"              >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"    - name: node-1\"      >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"      ip: ${vm['ip']}\"   >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"  server:\"               >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"    - name: wazuh-1\"     >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"      ip: ${vm['ip']}\"   >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"  dashboard:\"            >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"    - name: dashboard-1\" >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - echo \"      ip: \${vm['ip']}\"  >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - cd /root && chmod +x ./wazuh-install.sh"                                | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - cd /root && ./wazuh-install.sh -a -i"                                   | tee -a "${mask_file}"  >> "${temp_file}"
+#  echo "  - "            | tee -a "${mask_file}"  >> "${temp_file}"
+}
+
+# Configure cloud-init app install commands
+
+configure_cloud_init_app () {
+  app_name="${1}"
+  case "${app_name}" in
+    wazuh)
+      configure_wazuh_cloud_init_app
+      ;;
+  esac
+}
+
+# Configure cloud-init app installs
+
+configure_cloud_init_apps () {
+  if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
+    app_list="${vm['apps']}"
+    if [[ "${app_list}" =~ , ]]; then
+      IFS="," read -r -a app_array <<< "${app_list[*]}"
+      for app_item in "${app_array[@]}"; do
+        configure_cloud_init_app "${app_item}"
+      done
+    else
+      configure_cloud_init_app "${app_list}"
+    fi
+  fi
+}
+
 # Configure ubuntu cloud-init config file
 
 configure_ubuntu_init () {
@@ -1632,6 +1690,9 @@ configure_ubuntu_init () {
   if [ ! "${vm['runcmd']}" = "" ]; then
     echo "runcmd:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
     echo "  - [ sh, \"${vm['runcmd']}\" ]"            | tee -a "${mask_file}"  >> "${temp_file}"
+    if [ ! "${vm['apps']}" = "" ]; then
+      configure_cloud_init_apps
+    fi
   fi
   if [ "${options['mask']}" = "true" ]; then
     print_contents "${mask_file}"
@@ -1850,10 +1911,10 @@ list_nets () {
 
 process_ram_value () {
   if [[ "${vm['ram']}" =~ [m|M] ]]; then
-    vm['ram']=$( echo "${vm['ram']}" | tr -d 'm|M' )
+    vm['ram']=$( echo "${vm['ram']}" | tr -d 'm|M|b|B' )
   fi
   if [[ "${vm['ram']}" =~ [g|G] ]]; then
-    vm['ram']=$( echo "${vm['ram']}" | tr -d 'g|G' )
+    vm['ram']=$( echo "${vm['ram']}" | tr -d 'g|G|b|B' )
     vm['ram']=$(( "${vm['ram']}" * 1024 ))
   fi
 }
@@ -2299,9 +2360,11 @@ get_domain_info () {
 
 # Print VM info
 
+# shellcheck disable=SC2120
 print_vm_info () {
   echo ""
-  case "${vm['getinfo']}" in
+  info_item="${1}"
+  case "${info_item}" in
     uuid*|cpu*|mem*|state|name|id|persist*|auto*)
       get_domain_info "${vm['getinfo']}"
       echo "${domain_info}"
@@ -2340,7 +2403,15 @@ print_vm_info () {
 get_vm_info () {
   check_vm_exists
   if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
-    print_vm_info
+    info_list="${vm['getinfo']}"
+    if [[ "${info_list}" =~ , ]]; then
+      IFS="," read -r -a info_array <<< "${info_list[*]}"
+      for info_item in "${info_array[@]}"; do
+        print_vm_info "${info_item}"
+      done
+    else
+      print_vm_info "${info_list}"
+    fi
   fi
 }
 
@@ -2724,6 +2795,12 @@ while test $# -gt 0; do
       actions_list+=("sudo")
       shift
       ;;
+    --app*)                   # switch
+      # Install applications as part of cloud-init post scripts
+      check_value "$1" "$2"
+      vm['apps']="$2"
+      shift 2
+      ;;
     --arch)                   # switch
       # Specify architecture
       check_value "$1" "$2"
@@ -2808,7 +2885,7 @@ while test $# -gt 0; do
       actions_list+=("copy")
       shift
       ;;
-    --cpus|--vcps)            # switch
+    --cpu|--cpus|--vcpu*)     # switch
       # Number of VM CPUs
       check_value "$1" "$2"
       vm['cpus']="$2"
@@ -3425,14 +3502,14 @@ fi
 # Process options
 
 if [ -n "${options_list[*]}" ]; then
-  for list in "${options_list[@]}"; do
-    if [[ "${list}" =~ , ]]; then
-      IFS="," read -r -a array <<< "${list[*]}"
-      for item in "${array[@]}"; do
-        process_options "${item}"
+  for option_list in "${options_list[@]}"; do
+    if [[ "${option_list}" =~ , ]]; then
+      IFS="," read -r -a option_array <<< "${option_list[*]}"
+      for option_item in "${option_array[@]}"; do
+        process_options "${option_item}"
       done
     else
-      process_options "${list}"
+      process_options "${option_list}"
     fi
   done
 fi
@@ -3442,14 +3519,14 @@ reset_defaults
 # Process actions
 
 if [ -n "${actions_list[*]}" ]; then
-  for list in "${actions_list[@]}"; do
-    if [[ "${list}" =~ , ]]; then
-      IFS="," read -r -a array <<< "${list[*]}"
-      for item in "${array[@]}"; do
-        process_actions "${item}"
+  for action_list in "${actions_list[@]}"; do
+    if [[ "${action_list}" =~ , ]]; then
+      IFS="," read -r -a action_array <<< "${action_list[*]}"
+      for action_item in "${action_array[@]}"; do
+        process_actions "${action_item}"
       done
     else
-      process_actions "${list}"
+      process_actions "${action_list}"
     fi
   done
 fi

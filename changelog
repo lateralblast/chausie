@@ -282,3 +282,15 @@
 # Added code to handle M/G in memory value
 # 1.4.1: Sat Aug  8 02:12:42 PM AEST 2026
 # Added routine to get VM info
+# 1.4.2: Mon Aug 10 11:34:16 AM AEST 2026
+# Added ability to query multiple items from VM
+# 1.4.3: Mon Aug 10 12:32:59 PM AEST 2026
+# Updated cpu switch
+# 1.4.4: Mon Aug 10 01:33:50 PM AEST 2026
+# Added example start command to output when creating VM
+# 1.4.5: Mon Aug 10 01:36:57 PM AEST 2026
+# Changed default ubuntu username and password due to it not being created/set
+# 1.4.6: Mon Aug 10 01:50:05 PM AEST 2026
+# Updated action and option array processing
+# 1.4.6: Mon Aug 10 04:15:16 PM AEST 2026
+# Added app switch and initial app support
