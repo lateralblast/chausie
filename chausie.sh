@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.4.6
+# Version:      1.4.7
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -1905,6 +1905,20 @@ list_pools () {
 
 list_nets () {
   execute_command "virsh net-list --all" "linuxsu"
+}
+
+# Process disk size value
+
+process_disk_size_value () {
+  if [[ "${vm['size']}" =~ [m|M] ]]; then
+    vm['size']=$( echo "${vm['size']}" | tr -d 'm|M|b|B' )
+    vm['size']=$(( "${vm['size']}" / 1024 ))
+  else
+    if [[ "${vm['ram']}" =~ [g|G] ]]; then
+      vm['size']=$( echo "${vm['size']}" | tr -d 'g|G|b|B' )
+    fi
+  fi
+  vm['size']="${vm['size']}G"
 }
 
 # Process RAM value

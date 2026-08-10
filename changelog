@@ -294,3 +294,5 @@
 # Updated action and option array processing
 # 1.4.6: Mon Aug 10 04:15:16 PM AEST 2026
 # Added app switch and initial app support
+# 1.4.7: Mon Aug 10 04:43:39 PM AEST 2026
+# Added disk size unit handling
