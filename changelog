@@ -296,3 +296,7 @@
 # Added app switch and initial app support
 # 1.4.7: Mon Aug 10 04:43:39 PM AEST 2026
 # Added disk size unit handling
+# 1.4.8: Mon Aug 10 08:24:38 PM AEST 2026
+# Improved runcmd handling
+# 1.4.9: Mon Aug 10 08:25:34 PM AEST 2026
+# Added wazuh to apps selection

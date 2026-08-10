@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.4.7
+# Version:      1.4.9
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -685,7 +685,7 @@ set_defaults () {
   vm['netcfg']=""
   vm['bridge']=""
   vm['kernel']="linux-generic"
-  vm['runcmd']="/usr/bin/systemctl set-default multi-user.target"
+  vm['runcmd']="systemctl set-default multi-user.target"
   vm['isoarch']=""
   vm['machine']=""
   vm['sudoers']=""
@@ -1597,27 +1597,28 @@ configure_wazuh_cloud_init_app () {
     warning_message "Static IP is required for wazuh installation"
     do_exit
   fi
-  echo "  - sudo apt update"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo apt install -y curl gnupg ca-certificates"                         | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo ufw allow 22/tcp"                                                  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo ufw allow 443/tcp"                                                 | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo ufw allow 1514/tcp"                                                | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo ufw allow 1515/tcp"                                                | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - sudo ufw --force enable"                                                | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - cd /root && curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh"  | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"nodes:\"                   > /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"  indexer:\"              >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"    - name: node-1\"      >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"      ip: ${vm['ip']}\"   >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"  server:\"               >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"    - name: wazuh-1\"     >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"      ip: ${vm['ip']}\"   >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"  dashboard:\"            >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"    - name: dashboard-1\" >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - echo \"      ip: \${vm['ip']}\"  >> /root/config.yml"                   | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - cd /root && chmod +x ./wazuh-install.sh"                                | tee -a "${mask_file}"  >> "${temp_file}"
-  echo "  - cd /root && ./wazuh-install.sh -a -i"                                   | tee -a "${mask_file}"  >> "${temp_file}"
-#  echo "  - "            | tee -a "${mask_file}"  >> "${temp_file}"
+#  echo "  - [ apt, update ]"                                                             | tee -a "${mask_file}"  >> "${temp_file}"
+#  echo "  - [ apt, -y, upgrade ]"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    apt install -y curl gnupg ca-certificates"                                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    ufw allow 22/tcp"                                                          | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    ufw allow 443/tcp"                                                         | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    ufw allow 1514/tcp"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    ufw allow 1515/tcp"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    ufw --force enable"                                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    cd /root && curl -sO \"https://packages.wazuh.com/4.14/wazuh-install.sh\""  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"nodes:\"                      > /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"  indexer:\"                 >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"  server:\"                  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"  dashboard:\"               >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"    - name: ${vm['name']}\"  >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"      ip: ${vm['ip']}\"      >> /root/config.yml ]"                  | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    cd /root && chmod +x ./wazuh-install.sh"                                    | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    cd /root && ./wazuh-install.sh -a -i"                                       | tee -a "${mask_file}"  >> "${temp_file}"
+#  echo "    "            | tee -a "${mask_file}"  >> "${temp_file}"
 }
 
 # Configure cloud-init app install commands
@@ -1634,16 +1635,14 @@ configure_cloud_init_app () {
 # Configure cloud-init app installs
 
 configure_cloud_init_apps () {
-  if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
-    app_list="${vm['apps']}"
-    if [[ "${app_list}" =~ , ]]; then
-      IFS="," read -r -a app_array <<< "${app_list[*]}"
-      for app_item in "${app_array[@]}"; do
-        configure_cloud_init_app "${app_item}"
-      done
-    else
-      configure_cloud_init_app "${app_list}"
-    fi
+  app_list="${vm['apps']}"
+  if [[ "${app_list}" =~ , ]]; then
+    IFS="," read -r -a app_array <<< "${app_list[*]}"
+    for app_item in "${app_array[@]}"; do
+      configure_cloud_init_app "${app_item}"
+    done
+  else
+    configure_cloud_init_app "${app_list}"
   fi
 }
 
@@ -1687,12 +1686,17 @@ configure_ubuntu_init () {
   echo "  devices: ['/']"                             | tee -a "${mask_file}"  >> "${temp_file}"
   echo "power_state:"                                 | tee -a "${mask_file}"  >> "${temp_file}"
   echo "  mode: ${vm['power']}"                       | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "runcmd:"                                      | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "  - |"                                        | tee -a "${mask_file}"  >> "${temp_file}"
+  echo "    echo \"Running Commands\""                | tee -a "${mask_file}"  >> "${temp_file}"
+  if [ "${options['verbose']}" = "true" ]; then
+    echo "    set -x"                                 | tee -a "${mask_file}"  >> "${temp_file}"
+  fi
   if [ ! "${vm['runcmd']}" = "" ]; then
-    echo "runcmd:"                                    | tee -a "${mask_file}"  >> "${temp_file}"
-    echo "  - [ sh, \"${vm['runcmd']}\" ]"            | tee -a "${mask_file}"  >> "${temp_file}"
-    if [ ! "${vm['apps']}" = "" ]; then
-      configure_cloud_init_apps
-    fi
+    echo "    ${vm['runcmd']}"                        | tee -a "${mask_file}"  >> "${temp_file}"
+  fi
+  if [ ! "${vm['apps']}" = "" ]; then
+    configure_cloud_init_apps
   fi
   if [ "${options['mask']}" = "true" ]; then
     print_contents "${mask_file}"
