@@ -302,3 +302,27 @@
 # Added wazuh to apps selection
 # 1.5.0: Mon Aug 10 08:44:23 PM AEST 2026
 # Added updates option for installing updates
+# 1.5.1: Mon 21 Sep 2026 16:32:45 AEST
+# Fixed bad substitution in inject_key sshkeyfile warning message
+# 1.5.2: Mon 21 Sep 2026 16:38:00 AEST
+# Wired up disk size unit handling and fixed unit check to use vm size
+# 1.5.3: Mon 21 Sep 2026 16:41:24 AEST
+# Fixed inverted owner/group logic in upload_file chown command
+# 1.5.4: Mon 21 Sep 2026 16:43:19 AEST
+# Fixed wrong loop variable and PCI bus ID extraction in passthrough_device
+# 1.5.5: Mon 21 Sep 2026 16:44:51 AEST
+# Fixed inverted guard in passthrough_device that warned when devicetype was set
+# 1.5.6: Mon 21 Sep 2026 16:46:41 AEST
+# Fixed broken snapshot timestamp generation in create_snapshot
+# 1.5.7: Mon 21 Sep 2026 16:48:49 AEST
+# Fixed customize_vm virt-customize call and default postscript path
+# 1.5.8: Mon 21 Sep 2026 16:51:02 AEST
+# Fixed --customise and --setpass switches not matching their action cases
+# 1.5.9: Mon 21 Sep 2026 16:52:47 AEST
+# Added missing -- prefix to --backup and --netdriver switches
+# 1.6.0: Mon 21 Sep 2026 16:55:18 AEST
+# Fixed Ubuntu and Debian codename/release lookup table typos and missing entry
+# 1.6.1: Mon 21 Sep 2026 16:57:38 AEST
+# Fixed always-true condition in get_cidr that discarded a successful ip route lookup
+# 1.6.2: Mon 21 Sep 2026 16:59:35 AEST
+# Fixed get_cidr fallback picking up netmasks from unrelated interfaces

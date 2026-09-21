@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.5.0
+# Version:      1.6.2
 # Release:      1
 # License:      CC-BA (Creative Commons By Attribution)
 #               http://creativecommons.org/licenses/by/4.0/legalcode
@@ -198,7 +198,7 @@ get_debian_codename_from_release () {
 
 get_ubuntu_codename_from_release () {
   case "${vm['release']}" in
-    "4.20")
+    "4.10")
       vm['codename']="warty"
       ;;
     "5.04")
@@ -213,7 +213,7 @@ get_ubuntu_codename_from_release () {
     "6.10")
       vm['codename']="edgy"
       ;;
-    "7.05")
+    "7.04")
       vm['codename']="feisty"
       ;;
     "7.10")
@@ -262,7 +262,7 @@ get_ubuntu_codename_from_release () {
       vm['codename']="utopic"
       ;;
     "15.04")
-      vm['codename']="vivd"
+      vm['codename']="vivid"
       ;;
     "15.10")
       vm['codename']="wily"
@@ -280,7 +280,7 @@ get_ubuntu_codename_from_release () {
       vm['codename']="artful"
       ;;
     "18.04")
-      vm['codename']="bioic"
+      vm['codename']="bionic"
       ;;
     "18.10")
       vm['codename']="cosmic"
@@ -351,6 +351,9 @@ get_debian_release_from_codename () {
       ;;
     bookworm)
       vm['release']="12"
+      ;;
+    bullseye)
+      vm['release']="11"
       ;;
     buster)
       vm['release']="10"
@@ -620,8 +623,8 @@ get_cidr () {
     fi
   else
     vm['cidr']=$( ip r | grep link | grep "${vm['bridge']}" | awk '{print $1}' | cut -f2 -d/ | head -1 )
-    if [[ "${vm['cidr']}" =~ . ]] || [ "${vm['cidr']}" = "" ]; then
-      vm['netmask']=$( route -n | awk '{print $3}' | grep "^255" )
+    if [[ ! "${vm['cidr']}" =~ ^[0-9]+$ ]]; then
+      vm['netmask']=$( route -n | awk -v iface="${vm['bridge']}" '$8==iface && $3!="0.0.0.0" {print $3; exit}' )
       vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask | awk '{print $4}' )
     fi
   fi
@@ -1204,7 +1207,7 @@ process_devices () {
 # Passthrough device
 
 passthrough_device () {
-  if [ "${vm['hostdevice']}" = "" ] && [ "${vm['devicetype']}" ]; then
+  if [ "${vm['hostdevice']}" = "" ] && [ "${vm['devicetype']}" = "" ]; then
     warning_message "No host device or device type specified"
     do_exit
   fi
@@ -1222,7 +1225,8 @@ passthrough_device () {
     if [ ! "${vm['devicetype']}" = "" ]; then
       IFS=$'\n' read -r -a array < <( lspci | grep -i "${vm[devicetype]}" )
       for vm_devicetype in "${array[@]}"; do
-        if [ "${vm[hostdevice]}" = "" ]; then
+        vm_device=$( echo "${vm_devicetype}" | awk '{print $1}' )
+        if [ "${vm['hostdevice']}" = "" ]; then
           vm['hostdevice']="${vm_device}"
         else
           vm['hostdevice']="${vm['hostdevice']},${vm_device}"
@@ -1369,7 +1373,7 @@ inject_key () {
         warning_message "VM disk \"${vm['disk']}\" does not exist"
       fi
     else
-      warning_message "Key file \"${vm['sshkeyfile'}\" does not exist"
+      warning_message "Key file \"${vm['sshkeyfile']}\" does not exist"
     fi
   fi
 }
@@ -1390,8 +1394,7 @@ create_snapshot () {
   check_vm_exists
   if [ "${vm['exists']}" = "true" ]; then
     if [ "${vm['snapshot']}" = "" ] || [ "${vm['description']}" = "" ]; then
-      datestr=$( date )
-      suffix=$( date -d "${datestr}" +%Y%M%d%H%M%S )
+      suffix=$( date +%Y%m%d%H%M%S )
       if [ "${vm['snapshot']}" = "" ]; then
         vm['snapshot']="${vm['name']}_snap_${suffix}"
       fi
@@ -1437,9 +1440,9 @@ upload_file () {
         fi
         if [ ! "${vm['fileowner']}" = "" ]; then
           if [ ! "${vm['filegroup']}" = "" ]; then
-            command="chown ${vm['fileowner']} ${vm['destfile']}"
-          else
             command="chown ${vm['fileowner']}:${vm['filegroup']} ${vm['destfile']}"
+          else
+            command="chown ${vm['fileowner']} ${vm['destfile']}"
           fi
           run_command "${command}"
         fi
@@ -1492,7 +1495,11 @@ customize_vm () {
   if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
     stop_vm
     if [ -f "${vm['postscript']}" ] || [ "${options['dryrun']}" = "true" ]; then
-      execute_command "virt-customize " "linuxsu"
+      if [ ! "${vm['osname']}" = "opnsense" ]; then
+        if [ "${os['name']}" = "Linux" ]; then
+          execute_command "virt-customize -a ${vm['disk']} --run ${vm['postscript']}" "linuxsu"
+        fi
+      fi
     else
       warning_message "Post install script \"${vm['postscript']}\" does not exist"
     fi
@@ -1925,7 +1932,7 @@ process_disk_size_value () {
     vm['size']=$( echo "${vm['size']}" | tr -d 'm|M|b|B' )
     vm['size']=$(( "${vm['size']}" / 1024 ))
   else
-    if [[ "${vm['ram']}" =~ [g|G] ]]; then
+    if [[ "${vm['size']}" =~ [g|G] ]]; then
       vm['size']=$( echo "${vm['size']}" | tr -d 'g|G|b|B' )
     fi
   fi
@@ -2018,6 +2025,7 @@ reset_defaults () {
   if [ "${vm['size']}" = "" ]; then
     vm['size']="${defaults['size']}"
   fi
+  process_disk_size_value
   verbose_message "Setting VM size to \"${vm['size']}\""                  "notice"
   if [ "${vm['release']}" = "" ]; then
     get_release
@@ -2252,7 +2260,7 @@ reset_defaults () {
   fi
   verbose_message "Setting OS variant to \"${vm['osvariant']}\""          "notice"
   if [ "${vm['postscript']}" = "" ]; then
-    vm['postscript']="${script['path']}/scripts/post_install.sh"
+    vm['postscript']="${script['path']}/files/post.sh"
   fi
   verbose_message "Setting postinstall to \"${vm['postscript']}\""        "notice"
   if [ "${vm['power']}" = "" ]; then
@@ -2936,7 +2944,7 @@ while test $# -gt 0; do
       actions_list+=("createpool")
       shift
       ;;
-    --createsnap|backup*)     # switch
+    --createsnap|--backup*)   # switch
       # Create VM snapshot
       actions_list+=("snapshot")
       shift
@@ -2952,9 +2960,9 @@ while test $# -gt 0; do
       vm['crypt']="$2"
       shift 2
       ;;
-    --customise*)             # switch
+    --customise*|--customize*) # switch
       # Customize VM
-      actions_list+=("customise")
+      actions_list+=("customize")
       shift
       ;;
     --debug)                  # switch
@@ -3262,7 +3270,7 @@ while test $# -gt 0; do
       vm['nettype']="$2"
       shift 2
       ;;
-    --netbus|netdriver)       # switch
+    --netbus|--netdriver)     # switch
       # Net bus/driver (e.g. virtio)
       check_value "$1" "$2"
       vm['netbus']="$2"
@@ -3394,7 +3402,7 @@ while test $# -gt 0; do
       ;;
     --setpass*)               # switch
       # Set password of user in VM image
-      actions_list+=("setpass")
+      actions_list+=("setpassword")
       shift
       ;;
     --shell)                  # switch
