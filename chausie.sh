@@ -3,8 +3,8 @@
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
 # Version:      1.6.2
 # Release:      1
-# License:      CC-BA (Creative Commons By Attribution)
-#               http://creativecommons.org/licenses/by/4.0/legalcode
+# License:      CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0)
+#               https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 # Group:        System
 # Source:       N/A
 # URL:          https://github.com/lateralblast/chausie
