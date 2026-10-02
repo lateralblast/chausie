@@ -1114,7 +1114,7 @@ create_image_config () {
   else
     build_base="${vm['osname']}@${vm['buildbase']}"
   fi
-  echo "build-base: ${build_base}"                                                                     >> "${vm['craftfile']}"
+  echo "build-base: ${build_base}"                                                                                        >> "${vm['craftfile']}"
   echo "version: '${vm['imageversion']}'"                                                                                 >> "${vm['craftfile']}"
   echo "summary: ${vm['imagesummary']}"                                                                                   >> "${vm['craftfile']}"
   echo "description: |"                                                                                                   >> "${vm['craftfile']}"
