@@ -14,6 +14,11 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - Added gir1.2-freedesktop-dev, gir1.2-girepository-2.0, gir1.2-girepository-2.0-dev and gir1.2-glib-2.0-dev to required Linux packages
 - Added 30s timeout drop-in for systemd-networkd-wait-online in imagecraft yaml (boot stalls on 26.04/26.10 otherwise)
 - Added chmod 600 of generated netplan file in imagecraft yaml
+- Added --cloudinit switch and cloudinit option to build an imagecraft image for use with cloud-init (no baked root password or netplan, NoCloud datasource, empty machine-id), VM is created with a cloud-init seed disk
+- Added --cloudinitfile switch to specify the path of the generated cloud-init config file
+
+### Changed
+- Removed the --cloud* wildcard switch, the cloud-init config file switch is now --cloudinitfile (previously --cloud, --cloudinit, etc. took a file)
 - Added imagecraft, snap, and new package prerequisites to README, and an Imagecraft Images section
 
 ### Fixed

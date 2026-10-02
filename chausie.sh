@@ -769,6 +769,7 @@ set_defaults () {
   options['actions']="false"
   options['options']="false"
   options['updates']="false"
+  options['cloudinit']="false"
   options['verbose']="false"
   options['backing']="true"
   options['chpasswd']="false"
@@ -1063,6 +1064,9 @@ get_image_file_name () {
       fi
     fi
   fi
+  if [ "${options['cloudinit']}" = "true" ] && [[ ! "${vm['imagename']}" =~ -cloudinit$ ]]; then
+    vm['imagename']="${vm['imagename']}-cloudinit"
+  fi
   vm['imagefile']="${vm['releasedir']}/${vm['osname']}-${vm['release']}-${vm['name']}-${vm['imagename']}-${vm['arch']}.img"
   notice_message "Setting image file to \"${vm['imagefile']}\""
 }
@@ -1161,10 +1165,12 @@ create_image_config () {
   echo "      LABEL=root    /           ext4    discard,errors=remount-ro    0    1"                                      >> "${vm['craftfile']}"
   echo "      LABEL=uefi    /boot/efi/  vfat    umask=0077                   0    1"                                      >> "${vm['craftfile']}"
   echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
-  echo "  login:"                                                                                                         >> "${vm['craftfile']}"
-  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
-  echo "    overlay-script:"                                                                                              >> "${vm['craftfile']}"
-  echo "      echo \"root:${vm['password']}\" | chpasswd --root \"\${CRAFT_OVERLAY}\""                                    >> "${vm['craftfile']}"
+  if [ "${options['cloudinit']}" = "false" ]; then
+    echo "  login:"                                                                                                         >> "${vm['craftfile']}"
+    echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+    echo "    overlay-script:"                                                                                              >> "${vm['craftfile']}"
+    echo "      echo \"root:${vm['password']}\" | chpasswd --root \"\${CRAFT_OVERLAY}\""                                    >> "${vm['craftfile']}"
+  fi
   echo "  console:"                                                                                                       >> "${vm['craftfile']}"
   echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
   echo "    overlay-script: |"                                                                                            >> "${vm['craftfile']}"
@@ -1180,36 +1186,51 @@ create_image_config () {
   echo "  network:"                                                                                                       >> "${vm['craftfile']}"
   echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
   echo "    overlay-script: |"                                                                                            >> "${vm['craftfile']}"
-  echo "      mkdir -p \$CRAFT_OVERLAY/etc/netplan"                                                                       >> "${vm['craftfile']}"
-  echo "      cat << EOF > \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                    >> "${vm['craftfile']}"
-  echo "      network:"                                                                                                   >> "${vm['craftfile']}"
-  echo "        version: 2"                                                                                               >> "${vm['craftfile']}"
-  echo "        ethernets:"                                                                                               >> "${vm['craftfile']}"
-  echo "          default:"                                                                                               >> "${vm['craftfile']}"
-  echo "            match:"                                                                                               >> "${vm['craftfile']}"
-  echo "              name: \"e*\""                                                                                       >> "${vm['craftfile']}"
-  echo "            dhcp4: ${vm['dhcp']}"                                                                                 >> "${vm['craftfile']}"
-  if [ "${vm['dhcp']}" = "false" ]; then
-    echo "            addresses:"                                                                                         >> "${vm['craftfile']}"
-    for vm_ip in ${vm['ip']//,/ }; do
-      echo "              - ${vm_ip}/${vm['cidr']}"                                                                       >> "${vm['craftfile']}"
-    done
-    echo "            nameservers:"                                                                                       >> "${vm['craftfile']}"
-    echo "              addresses:"                                                                                       >> "${vm['craftfile']}"
-    for vm_dns in ${vm['dns']//,/ }; do
-      echo "                - ${vm_dns}"                                                                                  >> "${vm['craftfile']}"
-    done
-    echo "            routes:"                                                                                            >> "${vm['craftfile']}"
-    echo "              - to: default"                                                                                    >> "${vm['craftfile']}"
-    echo "                via: ${vm['gateway']}"                                                                          >> "${vm['craftfile']}"
+  if [ "${options['cloudinit']}" = "false" ]; then
+    echo "      mkdir -p \$CRAFT_OVERLAY/etc/netplan"                                                                       >> "${vm['craftfile']}"
+    echo "      cat << EOF > \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                    >> "${vm['craftfile']}"
+    echo "      network:"                                                                                                   >> "${vm['craftfile']}"
+    echo "        version: 2"                                                                                               >> "${vm['craftfile']}"
+    echo "        ethernets:"                                                                                               >> "${vm['craftfile']}"
+    echo "          default:"                                                                                               >> "${vm['craftfile']}"
+    echo "            match:"                                                                                               >> "${vm['craftfile']}"
+    echo "              name: \"e*\""                                                                                       >> "${vm['craftfile']}"
+    echo "            dhcp4: ${vm['dhcp']}"                                                                                 >> "${vm['craftfile']}"
+    if [ "${vm['dhcp']}" = "false" ]; then
+      echo "            addresses:"                                                                                         >> "${vm['craftfile']}"
+      for vm_ip in ${vm['ip']//,/ }; do
+        echo "              - ${vm_ip}/${vm['cidr']}"                                                                       >> "${vm['craftfile']}"
+      done
+      echo "            nameservers:"                                                                                       >> "${vm['craftfile']}"
+      echo "              addresses:"                                                                                       >> "${vm['craftfile']}"
+      for vm_dns in ${vm['dns']//,/ }; do
+        echo "                - ${vm_dns}"                                                                                  >> "${vm['craftfile']}"
+      done
+      echo "            routes:"                                                                                            >> "${vm['craftfile']}"
+      echo "              - to: default"                                                                                    >> "${vm['craftfile']}"
+      echo "                via: ${vm['gateway']}"                                                                          >> "${vm['craftfile']}"
+    fi
+    echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
+    echo "      chmod 600 \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                   >> "${vm['craftfile']}"
   fi
-  echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
-  echo "      chmod 600 \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                   >> "${vm['craftfile']}"
   echo "      mkdir -p \$CRAFT_OVERLAY/etc/systemd/system/systemd-networkd-wait-online.service.d"                     >> "${vm['craftfile']}"
   echo "      cat << EOF > \$CRAFT_OVERLAY/etc/systemd/system/systemd-networkd-wait-online.service.d/timeout.conf"    >> "${vm['craftfile']}"
   echo "      [Service]"                                                                                              >> "${vm['craftfile']}"
   echo "      TimeoutStartSec=${vm['waittimeout']}"                                                                   >> "${vm['craftfile']}"
   echo "      EOF"                                                                                                    >> "${vm['craftfile']}"
+  if [ "${options['cloudinit']}" = "true" ]; then
+    echo "      mkdir -p \$CRAFT_OVERLAY/etc/cloud/cloud.cfg.d"                                                         >> "${vm['craftfile']}"
+    echo "      cat << EOF > \$CRAFT_OVERLAY/etc/cloud/cloud.cfg.d/90-chausie-datasource.cfg"                           >> "${vm['craftfile']}"
+    echo "      datasource_list: [ NoCloud, None ]"                                                                     >> "${vm['craftfile']}"
+    echo "      EOF"                                                                                                    >> "${vm['craftfile']}"
+  fi
+  if [ "${options['cloudinit']}" = "true" ]; then
+    echo "  cloudinit:"                                                                                                 >> "${vm['craftfile']}"
+    echo "    plugin: nil"                                                                                              >> "${vm['craftfile']}"
+    echo "    after: [ packages ]"                                                                                      >> "${vm['craftfile']}"
+    echo "    overlay-script: |"                                                                                        >> "${vm['craftfile']}"
+    echo "      truncate -s 0 \$CRAFT_OVERLAY/etc/machine-id"                                                           >> "${vm['craftfile']}"
+  fi
   echo ""                                                                                                                 >> "${vm['craftfile']}"
   echo "volumes:"                                                                                                         >> "${vm['craftfile']}"
   echo "  disk:"                                                                                                          >> "${vm['craftfile']}"
@@ -1361,7 +1382,11 @@ create_vm () {
   check_image_exists
   create_disk
   if [ "${vm['vmtype']}" = "imagecraft" ]; then
-    options['localds']="false"
+    if [ "${options['cloudinit']}" = "true" ]; then
+      options['localds']="true"
+    else
+      options['localds']="false"
+    fi
   fi
   fix_libvirt_perms "${vm['disk']}"
   if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
@@ -3077,6 +3102,10 @@ process_options () {
       # Enable updates
       options['updates']="true"
       ;;
+    cloudinit)      # option
+      # Build imagecraft image for use with cloud-init
+      options['cloudinit']="true"
+      ;;
     verbose)        # option
       # Enable verbose mode
       options['verbose']="true"
@@ -3217,8 +3246,13 @@ while test $# -gt 0; do
       vm['cidr']="$2"
       shift 2
       ;;
-    --cloud*)                 # switch
-      # VM cloud-init config
+    --cloudinit)              # switch
+      # Build imagecraft image for use with cloud-init
+      options['cloudinit']="true"
+      shift
+      ;;
+    --cloudinitfile)          # switch
+      # VM cloud-init config file
       check_value "$1" "$2"
       vm['initcfg']="$2"
       shift 2

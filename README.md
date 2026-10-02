@@ -233,6 +233,21 @@ The generated YAML configures:
 - A 30 second timeout on systemd-networkd-wait-online, as without it
   26.04 and 26.10 images wait indefinitely during boot
 
+To build an image for use with cloud-init, use --cloudinit (or --options cloudinit):
+
+```
+./chausie.sh --action createvm --name test --release 24.04 --vmtype imagecraft --cloudinit
+```
+
+This generates a cloud-init based YAML file: the root password and netplan config are not
+baked into the image, cloud-init is configured to use the NoCloud datasource, and
+the machine ID is cleared so that each VM generates its own. The image is saved with
+-cloudinit in its name (e.g. ubuntu-24.04-test-imagecraft-cloudinit-amd64.img),
+and the VM is created with a cloud-init seed disk generated from the script's usual
+cloud-init settings (user, password, SSH key, network, etc.). The path the cloud-init config
+is written to can be changed with --cloudinitfile (the default is under the VM's directory,
+e.g. /var/lib/libvirt/images/test/test.cloud.cfg).
+
 Notes:
 
 - Imagecraft builds inside a multipass VM from the snapcraft remote, which does not
