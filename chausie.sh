@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.6.2
+# Version:      1.6.4
 # Release:      1
 # License:      CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0)
 #               https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
@@ -41,7 +41,7 @@ declare -a options_list
 os['name']=$( uname )
 os['arch']=$( uname -m | sed "s/aarch64/arm64/g" | sed "s/x86_64/amd64/g")
 os['user']=$( whoami )
-os['home']="$HOME"
+os['home']="${HOME}"
 os['group']=$( id -gn )
 script['args']="$*"
 script['file']="$0"
@@ -142,6 +142,21 @@ check_value () {
   fi
 }
 
+# Install Snap Packages
+
+check_snap_packages () {
+  for package in ${os['requiredsnaps']}; do
+    package_check=$( echo "${os['installedsnaps']}" | grep -c "^${package}$" )
+    if [ "${package_check}" = "0" ]; then
+      if [ "${package}" = "imagecraft" ]; then
+        execute_command "snap install --beta --classic ${package}" "linuxsu"
+      else
+        execute_command "snap install ${package}" "linuxsu"
+      fi
+    fi
+  done
+}
+
 # Install required packages
 
 check_packages () {
@@ -151,7 +166,7 @@ check_packages () {
       if [ "${os['name']}" = "Darwin" ]; then
         execute_command "brew install ${package}"       ""
       else
-        execute_command "apt-get install -y ${package}" "su"
+        execute_command "apt-get install -y ${package}" "linuxsu"
       fi
     fi
   done
@@ -521,10 +536,12 @@ get_osvariant () {
       fi
       ;;
     ubuntu)
-      if [ "${vm['release']}" = "26.04" ]; then
-        vm['osvariant']="ubuntu25.10"
-      else
-        vm['osvariant']="ubuntu${vm['release']}"
+      vm['osvariant']="ubuntu${vm['release']}"
+      variant_test=$( osinfo-query os short-id="${vm['osvariant']}" 2> /dev/null | grep -c "^ ${vm['osvariant']} " )
+      if [ "${variant_test}" = "0" ]; then
+        # Release not in the host osinfo-db yet, use the newest Ubuntu entry
+        vm['osvariant']=$( osinfo-query os --fields=short-id 2> /dev/null | awk '{print $1}' | grep -E "^ubuntu[0-9]+\.[0-9]+$" | sort -V | tail -1 )
+        notice_message "Release \"${vm['release']}\" not in osinfo-db, using OS variant \"${vm['osvariant']}\""
       fi
       ;;
     alma*)
@@ -664,8 +681,6 @@ set_defaults () {
   vm['arch']=""
   vm['boot']=""
   vm['cidr']=""
-  vm['size']=""
-  vm['release']=""
   vm['cpus']=""
   vm['name']=""
   vm['disk']=""
@@ -689,8 +704,16 @@ set_defaults () {
   vm['bridge']=""
   vm['kernel']="linux-generic"
   vm['runcmd']="systemctl set-default multi-user.target"
+  vm['vmtype']=""
+  vm['buildbase']=""
+  vm['consoledev']="ttyS0"
+  vm['waittimeout']="30"
+  vm['consolespeed']="115200"
+  vm['vmgroup']=$( groups |awk '{print $1}' )
+  vm['vmowner']=$( whoami )
   vm['isoarch']=""
   vm['machine']=""
+  vm['workdir']="${HOME}/.${script['name']}"
   vm['sudoers']=""
   vm['netmask']=""
   vm['homedir']=""
@@ -701,6 +724,10 @@ set_defaults () {
   vm['pooldir']=""
   vm['groupid']=""
   vm['virtdir']=""
+  vm['release']=""
+  vm['rootsize']=""
+  vm['swapsize']=""
+  vm['bootsize']=""
   vm['packages']=""
   vm['hostname']=""
   vm['username']=""
@@ -717,8 +744,8 @@ set_defaults () {
   vm['fileowner']=""
   vm['filegroup']=""
   vm['osvariant']=""
-  vm['imagename']=""
   vm['imagefile']=""
+  vm['imagename']="imagecraft"
   vm['groupname']=""
   vm['postscript']=""
   vm['sourcefile']=""
@@ -726,7 +753,10 @@ set_defaults () {
   vm['releasedir']=""
   vm['sshkeyfile']=""
   vm['devrelease']="26.10"
+  vm['imagesummary']="Imagecraft image"
+  vm['imageversion']="0.1"
   os['libvirtgroups']="kvm libvirt libvirt-qemu"
+  vm['imagedescription']="Image generated with Imagecraft"
   options['hwe']="false"
   options['mask']="false"
   options['debug']="false"
@@ -749,7 +779,6 @@ set_defaults () {
   options['passthrough']="false"
   defaults['ram']="4096"
   defaults['cpus']="2"
-  defaults['size']="20G"
   defaults['boot']="uefi"
   defaults['power']="reboot"
   defaults['shell']="/bin/bash"
@@ -765,6 +794,11 @@ set_defaults () {
   defaults['packages']="ansible"
   defaults['username']="cloudadmin"
   defaults['password']="cloudadmin"
+  defaults['rootsize']="20G"
+  defaults['buildbase']="24.04"
+  defaults['swapsize']="20G"
+  defaults['bootsize']="512M"
+  defaults['imagesize']="10G"
   # OS specific defaults
   # Ubuntu defaults
   ubuntu['netdev']="enp1s0"
@@ -796,8 +830,14 @@ set_defaults () {
     os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
     defaults['bridge']="en0"
   else
+    if command -v snap > /dev/null 2>&1; then
+      os['installedsnaps']=$( snap list | grep -v ^Name | awk '{print $1}' )
+    else
+      os['installedsnaps']=""
+    fi
     os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' | cut -f1 -d: )
-    os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev"
+    os['requiredsnaps']="imagecraft multipass"
+    os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev qemu-system-x86 ovmf gir1.2-freedesktop-dev gir1.2-girepository-2.0 gir1.2-girepository-2.0-dev gir1.2-glib-2.0-dev"
     defaults['bridge']="br0"
   fi
   if [ "${os['name']}" = "Darwin" ]; then
@@ -871,7 +911,7 @@ execute_command () {
   fi
   if [ "${privilege}" = "linuxsu" ] || [ "${privilege}" = "sulinux" ]; then
     if [ "${os['name']}" = "Linux" ]; then
-      command="sudo sh -c \"${command}\""
+      command="sudo sh -c $( printf '%q' "${command}" )"
     fi
   fi
   if [ "${options['verbose']}" = "true" ]; then
@@ -914,6 +954,7 @@ check_config () {
         execute_command "usermod -a -G ${group} ${os['user']}" "su"
       fi
     done
+    check_snap_packages
   fi
   check_packages
 }
@@ -964,7 +1005,12 @@ get_image () {
       check_file="${vm['releasedir']}/${check_file}"
       ;;
     *)
-      check_file="${vm['releasedir']}/${vm['imagefile']}"
+      if [ "${vm['vmtype']}" = "imagecraft" ]; then
+        get_image_file_name
+        check_file="${vm['imagefile']}"
+      else
+        check_file="${vm['releasedir']}/${vm['imagefile']}"
+      fi
       ;;
   esac
   if [ ! -f "${check_file}" ]; then
@@ -974,10 +1020,245 @@ get_image () {
       fi
       execute_command "pbzip2 -d ${check_file}.bz2" "linuxsu"
     else
-      execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
+      if [ "${vm['vmtype']}" = "imagecraft" ]; then
+        if [ ! -f "${check_file}" ]; then
+          create_image_config
+          create_image_file
+        fi
+      else
+        execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
+      fi
     fi
   else
-    verbose_message "Cloud Image \"${vm['releasedir']}/${vm['imagefile']}\" already exists" "notice"
+    verbose_message "Cloud Image \"${vm['imagefile']}\" already exists" "notice"
+  fi
+}
+
+# Check Imagecraft
+
+check_imagecraft () {
+  snap_test=$( snap list 2> /dev/null | grep -c imagecraft )
+  if [ "${snap_test}" = "0" ]; then
+    warning_message "Imagecraft is not installed"
+    do_exit
+  else
+    verbose_message "Imagecraft is installed" "notice"
+  fi
+}
+
+# Get Image File Name
+
+get_image_file_name () {
+  if [ "${vm['imagefile']}" = "" ]; then
+    if [ "${vm['releasedir']}" = "" ]; then
+      vm['releasedir']="${vm['imagedir']}/releases"
+    fi
+  else
+    if [ "${vm['releasedir']}" = "" ]; then
+      dir_name=$( dirname "${vm['imagefile']}" )
+      if [ "${dir_name}" = "." ]; then
+        vm['releasedir']="${vm['imagedir']}/releases"
+      else
+        vm['releasedir']="${dir_name}"
+      fi
+    fi
+  fi
+  vm['imagefile']="${vm['releasedir']}/${vm['osname']}-${vm['release']}-${vm['name']}-${vm['imagename']}-${vm['arch']}.img"
+  notice_message "Setting image file to \"${vm['imagefile']}\""
+}
+
+# Get Imagecraft build base
+# Imagecraft builds inside a multipass VM from the snapcraft remote, which
+# does not provide an image for every release (e.g. no 26.04), and imagecraft
+# only accepts the development release as "devel", so fall back
+# to the default build base and let mmdebstrap-suite select the target release
+
+get_build_base () {
+  if [ "${vm['buildbase']}" = "" ] && [ "${vm['release']}" = "${vm['devrelease']}" ]; then
+    vm['buildbase']="devel"
+  fi
+  if [ "${vm['buildbase']}" = "" ]; then
+    base_test=$( multipass find "snapcraft:${vm['release']}" 2> /dev/null | grep -c "^snapcraft:${vm['release']} " )
+    if [ "${base_test}" = "0" ]; then
+      vm['buildbase']="${defaults['buildbase']}"
+      notice_message "No snapcraft build image for \"${vm['release']}\", using build base \"${vm['buildbase']}\""
+    else
+      vm['buildbase']="${vm['release']}"
+    fi
+  fi
+}
+
+# Create Image Config
+
+create_image_config () {
+  get_release
+  get_codename
+  check_imagecraft
+  create_libvirt_dir "${vm['releasedir']}"
+  get_image_file_name
+  get_build_base
+  vm['craftfile']="${vm['releasedir']}/${vm['osname']}-${vm['release']}-${vm['name']}-${vm['imagename']}-${vm['arch']}.yaml"
+  if [ "${options['dryrun']}" = "true" ]; then
+    vm['craftfile']="/tmp/$( basename "${vm['craftfile']}" )"
+  fi
+  notice_message "Creating imagecraft file \"${vm['craftfile']}\""
+  echo ""                                                                                                                  > "${vm['craftfile']}"
+  echo "name: ${vm['osname']}-minimal"                                                                                    >> "${vm['craftfile']}"
+  echo "base: bare"                                                                                                       >> "${vm['craftfile']}"
+  if [ "${vm['buildbase']}" = "devel" ]; then
+    build_base="devel"
+  else
+    build_base="${vm['osname']}@${vm['buildbase']}"
+  fi
+  echo "build-base: ${build_base}"                                                                     >> "${vm['craftfile']}"
+  echo "version: '${vm['imageversion']}'"                                                                                 >> "${vm['craftfile']}"
+  echo "summary: ${vm['imagesummary']}"                                                                                   >> "${vm['craftfile']}"
+  echo "description: |"                                                                                                   >> "${vm['craftfile']}"
+  echo "  ${vm['imagedescription']}"                                                                                      >> "${vm['craftfile']}"
+  echo "platforms:"                                                                                                       >> "${vm['craftfile']}"
+  echo "  ${vm['arch']}:"                                                                                                 >> "${vm['craftfile']}"
+  echo ""                                                                                                                 >> "${vm['craftfile']}"
+  echo "filesystems:"                                                                                                     >> "${vm['craftfile']}"
+  echo "  default:"                                                                                                       >> "${vm['craftfile']}"
+  echo "    - device: (volume/disk/rootfs)"                                                                               >> "${vm['craftfile']}"
+  echo "      mount: /"                                                                                                   >> "${vm['craftfile']}"
+  echo "    - device: (volume/disk/efi)"                                                                                  >> "${vm['craftfile']}"
+  echo "      mount: /boot/efi/"                                                                                          >> "${vm['craftfile']}"
+  echo ""                                                                                                                 >> "${vm['craftfile']}"
+  echo "parts:"                                                                                                           >> "${vm['craftfile']}"
+  echo "  rootfs:"                                                                                                        >> "${vm['craftfile']}"
+  echo "    plugin: mmdebstrap"                                                                                           >> "${vm['craftfile']}"
+  echo "    mmdebstrap-suite: ${vm['codename']}"                                                                          >> "${vm['craftfile']}"
+  echo "    override-build: |"                                                                                            >> "${vm['craftfile']}"
+  echo "      craftctl default"                                                                                           >> "${vm['craftfile']}"
+  echo "      mkdir \$CRAFT_PART_INSTALL/boot/efi/"                                                                       >> "${vm['craftfile']}"
+  echo "      cat << EOF > \$CRAFT_PART_INSTALL/etc/apt/sources.list.d/ubuntu.sources"                                    >> "${vm['craftfile']}"
+  echo "      Types: deb deb-src"                                                                                         >> "${vm['craftfile']}"
+  echo "      URIs: http://archive.ubuntu.com/ubuntu"                                                                     >> "${vm['craftfile']}"
+  echo "      Suites: ${vm['codename']} ${vm['codename']}-updates ${vm['codename']}-backports ${vm['codename']}-security" >> "${vm['craftfile']}"
+  echo "      Components: main restricted universe multiverse"                                                            >> "${vm['craftfile']}"
+  echo "      Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"                                                  >> "${vm['craftfile']}"
+  echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
+  echo "    organize:"                                                                                                    >> "${vm['craftfile']}"
+  echo "      '*': (overlay)/"                                                                                            >> "${vm['craftfile']}"
+  echo "  packages:"                                                                                                      >> "${vm['craftfile']}"
+  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+  echo "    overlay-packages:"                                                                                            >> "${vm['craftfile']}"
+  echo "      - ubuntu-server-minimal"                                                                                    >> "${vm['craftfile']}"
+  echo "      - linux-image-generic"                                                                                      >> "${vm['craftfile']}"
+  echo "      - grub2-common"                                                                                             >> "${vm['craftfile']}"
+  echo "      - grub-pc"                                                                                                  >> "${vm['craftfile']}"
+  echo "      - shim-signed"                                                                                              >> "${vm['craftfile']}"
+  echo "      - openssh-server"                                                                                           >> "${vm['craftfile']}"
+  echo "      - cloud-init"                                                                                               >> "${vm['craftfile']}"
+  for package in ${vm['packages']}; do
+    echo "      - ${package}"                                                                                             >> "${vm['craftfile']}"
+  done 
+  echo "  fstab:"                                                                                                         >> "${vm['craftfile']}"
+  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+  echo "    overlay-script: |"                                                                                            >> "${vm['craftfile']}"
+  echo "      cat << EOF > \$CRAFT_OVERLAY/etc/fstab"                                                                     >> "${vm['craftfile']}"
+  echo "      LABEL=root    /           ext4    discard,errors=remount-ro    0    1"                                      >> "${vm['craftfile']}"
+  echo "      LABEL=uefi    /boot/efi/  vfat    umask=0077                   0    1"                                      >> "${vm['craftfile']}"
+  echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
+  echo "  login:"                                                                                                         >> "${vm['craftfile']}"
+  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+  echo "    overlay-script:"                                                                                              >> "${vm['craftfile']}"
+  echo "      echo \"root:${vm['password']}\" | chpasswd --root \"\${CRAFT_OVERLAY}\""                                    >> "${vm['craftfile']}"
+  echo "  console:"                                                                                                       >> "${vm['craftfile']}"
+  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+  echo "    overlay-script: |"                                                                                            >> "${vm['craftfile']}"
+  echo "      mkdir -p \$CRAFT_OVERLAY/etc/default/grub.d"                                                                >> "${vm['craftfile']}"
+  echo "      cat << EOF > \$CRAFT_OVERLAY/etc/default/grub.d/99-console.cfg"                                             >> "${vm['craftfile']}"
+  echo "      GRUB_TIMEOUT_STYLE=menu"                                                                                    >> "${vm['craftfile']}"
+  echo "      GRUB_TIMEOUT=3"                                                                                             >> "${vm['craftfile']}"
+  echo "      GRUB_CMDLINE_LINUX_DEFAULT=\"\""                                                                            >> "${vm['craftfile']}"
+  echo "      GRUB_CMDLINE_LINUX=\"console=tty1 console=${vm['consoledev']},${vm['consolespeed']}n8\""                    >> "${vm['craftfile']}"
+  echo "      GRUB_TERMINAL=\"console serial\""                                                                           >> "${vm['craftfile']}"
+  echo "      GRUB_SERIAL_COMMAND=\"serial --speed=${vm['consolespeed']} --unit=0 --word=8 --parity=no --stop=1\""        >> "${vm['craftfile']}"
+  echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
+  echo "  network:"                                                                                                       >> "${vm['craftfile']}"
+  echo "    plugin: nil"                                                                                                  >> "${vm['craftfile']}"
+  echo "    overlay-script: |"                                                                                            >> "${vm['craftfile']}"
+  echo "      mkdir -p \$CRAFT_OVERLAY/etc/netplan"                                                                       >> "${vm['craftfile']}"
+  echo "      cat << EOF > \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                    >> "${vm['craftfile']}"
+  echo "      network:"                                                                                                   >> "${vm['craftfile']}"
+  echo "        version: 2"                                                                                               >> "${vm['craftfile']}"
+  echo "        ethernets:"                                                                                               >> "${vm['craftfile']}"
+  echo "          default:"                                                                                               >> "${vm['craftfile']}"
+  echo "            match:"                                                                                               >> "${vm['craftfile']}"
+  echo "              name: \"e*\""                                                                                       >> "${vm['craftfile']}"
+  echo "            dhcp4: ${vm['dhcp']}"                                                                                 >> "${vm['craftfile']}"
+  if [ "${vm['dhcp']}" = "false" ]; then
+    echo "            addresses:"                                                                                         >> "${vm['craftfile']}"
+    for vm_ip in ${vm['ip']//,/ }; do
+      echo "              - ${vm_ip}/${vm['cidr']}"                                                                       >> "${vm['craftfile']}"
+    done
+    echo "            nameservers:"                                                                                       >> "${vm['craftfile']}"
+    echo "              addresses:"                                                                                       >> "${vm['craftfile']}"
+    for vm_dns in ${vm['dns']//,/ }; do
+      echo "                - ${vm_dns}"                                                                                  >> "${vm['craftfile']}"
+    done
+    echo "            routes:"                                                                                            >> "${vm['craftfile']}"
+    echo "              - to: default"                                                                                    >> "${vm['craftfile']}"
+    echo "                via: ${vm['gateway']}"                                                                          >> "${vm['craftfile']}"
+  fi
+  echo "      EOF"                                                                                                        >> "${vm['craftfile']}"
+  echo "      chmod 600 \$CRAFT_OVERLAY/etc/netplan/01-netcfg.yaml"                                                   >> "${vm['craftfile']}"
+  echo "      mkdir -p \$CRAFT_OVERLAY/etc/systemd/system/systemd-networkd-wait-online.service.d"                     >> "${vm['craftfile']}"
+  echo "      cat << EOF > \$CRAFT_OVERLAY/etc/systemd/system/systemd-networkd-wait-online.service.d/timeout.conf"    >> "${vm['craftfile']}"
+  echo "      [Service]"                                                                                              >> "${vm['craftfile']}"
+  echo "      TimeoutStartSec=${vm['waittimeout']}"                                                                   >> "${vm['craftfile']}"
+  echo "      EOF"                                                                                                    >> "${vm['craftfile']}"
+  echo ""                                                                                                                 >> "${vm['craftfile']}"
+  echo "volumes:"                                                                                                         >> "${vm['craftfile']}"
+  echo "  disk:"                                                                                                          >> "${vm['craftfile']}"
+  echo "    schema: gpt"                                                                                                  >> "${vm['craftfile']}"
+  echo "    structure:"                                                                                                   >> "${vm['craftfile']}"
+  echo "      - name: rootfs"                                                                                             >> "${vm['craftfile']}"
+  echo "        role: system-data"                                                                                        >> "${vm['craftfile']}"
+  echo "        type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4"                                                               >> "${vm['craftfile']}"
+  echo "        filesystem: ext4"                                                                                         >> "${vm['craftfile']}"
+  echo "        filesystem-label: root"                                                                                   >> "${vm['craftfile']}"
+  echo "        size: ${vm['imagesize']}"                                                                                 >> "${vm['craftfile']}"
+  echo "      - name: efi"                                                                                                >> "${vm['craftfile']}"
+  echo "        role: system-boot"                                                                                        >> "${vm['craftfile']}"
+  echo "        type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B"                                                               >> "${vm['craftfile']}"
+  echo "        filesystem: vfat"                                                                                         >> "${vm['craftfile']}"
+  echo "        filesystem-label: uefi"                                                                                   >> "${vm['craftfile']}"
+  echo "        size: ${vm['bootsize']}"                                                                                  >> "${vm['craftfile']}"
+  print_contents "${vm['craftfile']}"
+}
+
+# Create Image File
+
+create_image_file () {
+  if [ ! -f "${vm['imagefile']}" ]; then
+    tmp_dir="${vm['workdir']}/imagecraft/${vm['name']}"
+    verbose_message "Building image file \"${vm['imagefile']}\" from \"${vm['craftfile']}\"" "notice"
+    execute_command "mkdir -p ${tmp_dir} && cd ${tmp_dir} && imagecraft init && cp ${vm['craftfile']} ${tmp_dir}/imagecraft.yaml && cd ${tmp_dir} && imagecraft pack"
+    if [ "${options['dryrun']}" = "true" ]; then
+      execute_command "qemu-img convert -f raw -O qcow2 ${tmp_dir}/disk.img ${vm['imagefile']}" "linuxsu"
+    elif [ -f "${tmp_dir}/disk.img" ]; then
+      execute_command "qemu-img convert -f raw -O qcow2 ${tmp_dir}/disk.img ${vm['imagefile']}" "linuxsu"
+      fix_libvirt_perms "${vm['imagefile']}"
+    else
+      verbose_message "Image file ${vm['imagefile']} could not be created" "error"
+    fi
+    execute_command "rm -rf ${tmp_dir}"
+  else
+    warning_message "Image file ${vm['imagefile']} already exists"
+  fi
+}
+
+# Delete Image
+
+delete_image () {
+  get_image_file_name
+  if [ -f "${vm['imagefile']}" ]; then
+    execute_command "rm -f ${vm['imagefile']}" "linuxsu"
+  else
+    verbose_message "Image ${vm['imagefile']} does not exist" "notice"
   fi
 }
 
@@ -989,7 +1270,6 @@ create_pool () {
   if [[ ! "$pool_test" =~ ${vm['poolname']} ]]; then
     execute_command "virsh pool-create-as --name ${vm['poolname']} --type dir --target ${vm['pooldir']} > /dev/null 2>&1" ""
     fix_libvirt_perms "${vm['pooldir']}"
-
   else
     verbose_message "Pool \"${vm['poolname']}\" already exists" "notice"
   fi
@@ -1028,7 +1308,8 @@ check_image_exists () {
       check_file="${vm['releasedir']}/${check_file}"
       ;;
     *)
-      check_file="${vm['releasedir']}/${vm['imagefile']}"
+      get_image_file_name
+      check_file="${vm['imagefile']}"
       ;;
   esac
   if [ ! -f "${check_file}" ]; then
@@ -1051,21 +1332,22 @@ create_disk () {
         check_file="${vm['releasedir']}/${check_file}"
         ;;
       *)
-      check_file="${vm['releasedir']}/${vm['imagefile']}"
+        get_image_file_name
+        check_file="${vm['imagefile']}"
       ;;
     esac
     case "${vm['osname']}" in
       ubuntu|alma*|rocky*|debian*) 
         if [ "${options['backing']}" = "true" ]; then
-          execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['size']}" "linuxsu"
+          execute_command "qemu-img create -b ${check_file} -F qcow2 -f qcow2 ${vm['disk']} ${vm['rootsize']}" "linuxsu"
         else
           execute_command "cp ${check_file} ${vm['disk']}"              "linuxsu"
-          execute_command "qemu-img resize ${vm['disk']} ${vm['size']}" "linuxsu"
+          execute_command "qemu-img resize ${vm['disk']} ${vm['rootsize']}" "linuxsu"
         fi 
         ;;
       opnsense)
         execute_command "qemu-img convert -f raw -O qcow2 ${check_file} ${vm['disk']}" "linuxsu"
-        execute_command "qemu-img resize ${vm['disk']} ${vm['size']}"                  "linuxsu"
+        execute_command "qemu-img resize ${vm['disk']} ${vm['rootsize']}"              "linuxsu"
         ;;
     esac
   fi
@@ -1078,6 +1360,9 @@ create_vm () {
   check_bridge
   check_image_exists
   create_disk
+  if [ "${vm['vmtype']}" = "imagecraft" ]; then
+    options['localds']="false"
+  fi
   fix_libvirt_perms "${vm['disk']}"
   if [ "${vm['exists']}" = "false" ] || [ "${options['dryrun']}" = "true" ]; then
     if [ "${vm['osname']}" = "ubuntu" ] || [ "${vm['osname']}" = "almalinux" ] || [ "${vm['osname']}" = "rockylinux" ] || [ "${vm['osname']}" = "debian" ]; then
@@ -1140,7 +1425,11 @@ create_vm () {
     if [ "${vm['osname']}" = "opnsense" ]; then
       cli['boot']=""
     else
-      cli['boot']="--boot ${vm['boot']}"
+      if [ "${vm['vmtype']}" = "imagecraft" ]; then
+        cli['boot']="--boot loader=/usr/share/OVMF/OVMF_CODE_4M.fd,loader_type=pflash"
+      else
+        cli['boot']="--boot ${vm['boot']}"
+      fi
     fi
     if [ "${options['reboot']}" = "false" ]; then
       cli['reboot']="--noreboot"
@@ -1149,7 +1438,9 @@ create_vm () {
     execute_command "${command}" "linuxsu"
     information_message "${script['file']} --action startvm,connect --name ${vm['name']}"
     if [ "${options['localds']}" = "false" ]; then
-      create_keys
+#      if [ "${vm['vmtype']}" != "imagecraft" ]; then
+        create_keys
+#      fi
     fi
   fi
 }
@@ -1471,7 +1762,7 @@ run_command () {
       fi
       if [ ! "${vm['osname']}" = "opnsense" ]; then
         if [ "${os['name']}" = "Linux" ]; then
-          execute_command "virt-customize -a ${vm['disk']} --run-command \"${command}\"" "linuxsu"
+          execute_command "virt-customize -a ${vm['disk']} --run-command $( printf '%q' "${command}" )" "linuxsu"
         fi
       fi
     else
@@ -1856,7 +2147,7 @@ install_packages () {
   check_vm_exists
   if [ "${vm['exists']}" = "true" ] || [ "${options['dryrun']}" = "true" ]; then
     if [ -f "${vm['disk']}" ] || [ "${options['dryrun']}" = "true" ]; then
-      execute_command "virt-customize -a ${vm['disk']} --install \"${vm['packages']}\"" "linuxsu"
+      execute_command "virt-customize -a ${vm['disk']} --install $( printf '%q' "${vm['packages']}" )" "linuxsu"
     else
       warning_message "VM disk \"${vm['disk']}\" does not exist"
     fi
@@ -1903,7 +2194,7 @@ add_sudoers () {
 
 create_keys () {
   stop_vm
-  command="ssh-keygen -f /etc/ssh/ssh_host_ed25519_key -t ed25519  -N \"\""
+  command="rm -f /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub ; ssh-keygen -A"
   run_command "${command}"
 }
 
@@ -1928,15 +2219,32 @@ list_nets () {
 # Process disk size value
 
 process_disk_size_value () {
-  if [[ "${vm['size']}" =~ [m|M] ]]; then
-    vm['size']=$( echo "${vm['size']}" | tr -d 'm|M|b|B' )
-    vm['size']=$(( "${vm['size']}" / 1024 ))
-  else
-    if [[ "${vm['size']}" =~ [g|G] ]]; then
-      vm['size']=$( echo "${vm['size']}" | tr -d 'g|G|b|B' )
+  for diskname in imagesize rootsize bootsize swapsize; do
+    if [[ "${vm[${diskname}]}" =~ [m|M|g|G] ]]; then
+      if [[ "${vm[${diskname}]}" =~ [m|M] ]]; then
+        vm[${diskname}]=$( echo "${vm[${diskname}]}" | tr -d 'm|M|g|G' )
+        if [ "${vm[${diskname}]}" -ge 1024 ]; then
+          vm[${diskname}]="$(( vm[${diskname}] / 1024 ))G"
+        else
+          vm[${diskname}]="${vm[${diskname}]}M"
+        fi
+      else
+        vm[${diskname}]=$( echo "${vm[${diskname}]}" | tr -d 'm|M|g|G' )
+        vm[${diskname}]="${vm[${diskname}]}G"
+      fi
+    else
+      if [ "${vm[${diskname}]}" = "" ]; then
+        vm[${diskname}]="${defaults[${diskname}]}"
+      else
+        if [ "${vm[${diskname}]}" -ge 1024 ]; then
+          vm[${diskname}]=$(( "${vm[${diskname}]}" / 1024 ))
+          vm[${diskname}]="${vm[${diskname}]}G"
+        else
+          vm[${diskname}]="${vm[${diskname}]}M"
+        fi
+      fi
     fi
-  fi
-  vm['size']="${vm['size']}G"
+  done
 }
 
 # Process RAM value
@@ -2002,7 +2310,7 @@ reset_defaults () {
       fi
       ;;
   esac
-  verbose_message "Setting OS name to \"${vm['osname']}\""                 "notice"
+  verbose_message "Setting OS name to \"${vm['osname']}\""                "notice"
   verbose_message "Setting VM arch to \"${vm['arch']}\""                  "notice"
   verbose_message "Setting ISO arch to \"${vm['isoarch']}\""              "notice"
   if [ "${vm['cputype']}" = "" ]; then
@@ -2022,11 +2330,11 @@ reset_defaults () {
   fi
   process_ram_value
   verbose_message "Setting VM RAM to \"${vm['ram']}\""                    "notice"
-  if [ "${vm['size']}" = "" ]; then
-    vm['size']="${defaults['size']}"
+  if [ "${vm['rootsize']}" = "" ]; then
+    vm['rootsize']="${defaults['rootsize']}"
   fi
   process_disk_size_value
-  verbose_message "Setting VM size to \"${vm['size']}\""                  "notice"
+  verbose_message "Setting VM size to \"${vm['rootsize']}\""              "notice"
   if [ "${vm['release']}" = "" ]; then
     get_release
   fi
@@ -2470,6 +2778,11 @@ process_actions () {
       # Copy file into VM image
       upload_file
       ;;
+    createimage)            # action
+      # Create image
+      create_image_config
+      create_image_file
+      ;;
     createpool)             # action
       # Create pool
       create_pool
@@ -2480,6 +2793,10 @@ process_actions () {
       check_config
       create_pool
       create_vm
+      ;;
+    deleteimage)            # action
+      # Delete image
+      delete_image
       ;;
     deletesnap*)            # action
       # Delete snapshot
@@ -2817,7 +3134,7 @@ fi
 while test $# -gt 0; do
   case $1 in
     --action*)                # switch
-      # Action to perform (e.g. createvm,deletevm)
+      # Action to perform e.g. createvm,deletevm
       check_value "$1" "$2"
       actions_list+=("$2")
       shift 2
@@ -2844,8 +3161,20 @@ while test $# -gt 0; do
       vm['arch']="$2"
       shift 2
       ;;
+    --buildbase)              # switch
+      # Specify imagecraft build base release (default: same as release if available, otherwise 24.04)
+      check_value "$1" "$2"
+      vm['buildbase']="$2"
+      shift 2
+      ;;
+    --bootsize)        # switch
+      # Size of VM boot disk partition
+      check_value "$1" "$2"
+      vm['bootsize']="$2"
+      shift 2
+      ;;
     --boottype)               # switch
-      # VM boot type (e.g. UEFI)
+      # VM boot type e.g. UEFI
       check_value "$1" "$2"
       vm['boot']="$2"
       shift 2
@@ -2939,8 +3268,13 @@ while test $# -gt 0; do
       actions_list+=("creategroup")
       shift
       ;;
+    --createimage)            # switch
+      # Create VM image
+      actions_list+=("createimage")
+      shift
+      ;;
     --createpool)             # switch
-      # Create VM pool 
+      # Create VM pool
       actions_list+=("createpool")
       shift
       ;;
@@ -2968,6 +3302,11 @@ while test $# -gt 0; do
     --debug)                  # switch
       # Run in debug mode
       options['debug']="true"
+      shift
+      ;;
+    --deleteimage)            # switch
+      # Delete VM image
+      actions_list+=("deleteimage")
       shift
       ;;
     --deletepool)             # switch
@@ -3211,6 +3550,30 @@ while test $# -gt 0; do
       vm['imageurl']="$2"
       shift 2
       ;;
+    --imagedescription)       # switch
+      # Image description
+      check_value "$1" "$2"
+      vm['imagedescription']="$2"
+      shift 2
+      ;;
+    --imagesize)              # switch
+      # Image size
+      check_value "$1" "$2"
+      vm['imagesize']="$2"
+      shift 2
+      ;;
+    --imagesummary)           # switch
+      # Image summary
+      check_value "$1" "$2"
+      vm['imagesummary']="$2"
+      shift 2
+      ;;
+    --imageversion)           # switch
+      # Image version
+      check_value "$1" "$2"
+      vm['imageversion']="$2"
+      shift 2
+      ;;
     --inject*)                # switch
       # Inject SSH keys into VM image
       actions_list+=("inject")
@@ -3265,13 +3628,13 @@ while test $# -gt 0; do
       shift 2
       ;;
     --nettype)                # switch
-      # Net type (e.g. bridge)
+      # Net type e.g. bridge
       check_value "$1" "$2"
       vm['nettype']="$2"
       shift 2
       ;;
     --netbus|--netdriver)     # switch
-      # Net bus/driver (e.g. virtio)
+      # Net bus/driver e.g. virtio
       check_value "$1" "$2"
       vm['netbus']="$2"
       shift 2
@@ -3283,19 +3646,19 @@ while test $# -gt 0; do
       shift 2
       ;;
     --netdev|--nic)           # switch
-      # VM network device (e.g. enp1s0)
+      # VM network device e.g. enp1s0
       check_value "$1" "$2"
       vm['netdev']="$2"
       shift 2
       ;;
     --option*)                # switch
-      # Option(s) (e.g. verbose,dryrun)
+      # Option(s) e.g. verbose,dryrun
       check_value "$1" "$2"
       options_list+=("$2")
       shift 2
       ;;
     --os|--osname)            # switch
-      # Name of OS (e.g. ubuntu, opnsense)
+      # Name of OS e.g. ubuntu, opnsense
       check_value "$1" "$2"
       vm['osname']="$2"
       shift 2
@@ -3319,7 +3682,7 @@ while test $# -gt 0; do
       shift 2
       ;;
     --password)               # switch
-      # Password for user (e.g. root)
+      # Password for user e.g. root
       check_value "$1" "$2"
       vm['password']="$2"
       shift 2
@@ -3411,10 +3774,10 @@ while test $# -gt 0; do
       vm['shell']="$2"
       shift 2
       ;;
-    --size)                   # switch
-      # Size of VM disk
+    --size|--rootsize)        # switch
+      # Size of VM root disk/partition 
       check_value "$1" "$2"
-      vm['size']="$2"
+      vm['rootsize']="$2"
       shift 2
       ;;
     --shellcheck)             # switch
@@ -3477,7 +3840,13 @@ while test $# -gt 0; do
       actions_list+=("suspend")
       shift
       ;;
-    --devicetype|--type)      # switch
+    --swapsize)               # switch
+      # Size of VM boot disk partition
+      check_value "$1" "$2"
+      vm['swapsize']="$2"
+      shift 2
+      ;;
+    --devicetype)             # switch
       # Device Type
       check_value "$1" "$2"
       vm['devicetype']="$2"
@@ -3521,6 +3890,24 @@ while test $# -gt 0; do
       # VM/libvirt base directory
       check_value "$1" "$2"
       vm['virtdir']="$2"
+      shift 2
+      ;;
+    --vmowner)                # switch
+      # VM ownwer
+      check_value "$1" "$2"
+      vm['vmowner']="$2"
+      shift 2
+      ;;
+    --vmgroup)                # switch
+      # VM ownwer
+      check_value "$1" "$2"
+      vm['vmgroup']="$2"
+      shift 2
+      ;;
+    --vmtype)                 # switch
+      # VM type
+      check_value "$1" "$2"
+      vm['vmtype']="$2"
       shift 2
       ;;
     --)

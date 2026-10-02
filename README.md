@@ -15,7 +15,7 @@ Fund me here: https://ko-fi.com/richardatlateralblast
 Version
 -------
 
-Current version 1.6.2
+Current version 1.6.4
 
 Supported Distributions
 -----------------------
@@ -52,12 +52,18 @@ Required packages:
 - pbzip2
 - genisoimage (Linux)
 - mkisofs (MacOS)
+- qemu-system-x86 and ovmf (Linux, UEFI boot)
+- gir1.2-freedesktop-dev, gir1.2-girepository-2.0, gir1.2-girepository-2.0-dev, gir1.2-glib-2.0-dev (Linux)
+- imagecraft and multipass snaps (Linux, only needed for --vmtype imagecraft)
 
 Example command to install packages on Ubuntu:
 
 ```
 sudo apt install -y libosinfo-bin libguestfs-tools whois virt-manager cloud-image-utils ipcalc
 ```
+
+On Linux the script will install any missing required packages, and the snaps
+(imagecraft is installed from the beta channel with --classic).
 
 You'll also need to configure network bridges (the default is br0, but can be changed)
 if you want to use the default settings. You could configure it with NAT, or internal/
@@ -193,6 +199,55 @@ you can get this by using the --help switch folled by actions, or options.
 
 If you want full help, i.e. standard switches, actions, and options,
 use the --help switch followed by full/all.
+
+Imagecraft Images
+-----------------
+
+As an alternative to downloading a cloud image, the script can build an Ubuntu image
+locally with imagecraft by using --vmtype imagecraft. The script generates the
+imagecraft YAML file, runs imagecraft pack, and converts the result to qcow2.
+The image is saved in the releases directory (e.g. /var/lib/libvirt/images/releases)
+as <os>-<release>-<name>-imagecraft-<arch>.img, and is only built if it doesn't already exist.
+
+Build an image only:
+
+```
+./chausie.sh --action createimage --name test --release 24.04 --vmtype imagecraft
+```
+
+Build the image if needed, and create a VM from it:
+
+```
+./chausie.sh --action createvm --name test --release 24.04 --vmtype imagecraft
+```
+
+Sizes can be set with --imagesize (image, default 10G), --rootsize or --size (VM disk, default 20G),
+--bootsize (EFI partition, default 512M), and --swapsize.
+
+The generated YAML configures:
+
+- A root user with the default password (ubuntulinux)
+- A serial console (ttyS0, 115200) and a visible grub menu, so virsh console works
+- Networking via netplan: DHCP if --options dhcp is used (or no --ip is given),
+  otherwise a static config from --ip, --cidr, --gateway, and --dns
+- A 30 second timeout on systemd-networkd-wait-online, as without it
+  26.04 and 26.10 images wait indefinitely during boot
+
+Notes:
+
+- Imagecraft builds inside a multipass VM from the snapcraft remote, which does not
+  have an image for every release (e.g. 26.04). The script uses the release as the build
+  base if available, devel for the development release (26.10), and otherwise falls
+  back to 24.04. This can be overridden with --buildbase. The target release is
+  still set by the release being built.
+- Images are built with SSH host keys, so VMs created from the same image would share
+  them. When a VM is created without cloud-init the script removes and regenerates the
+  host keys in the VM disk (the sshkey action does the same on an existing VM).
+- cloud-init is installed but the VM is created without a cloud-init disk, so SSH keys
+  and users are not injected at first boot.
+- If the host osinfo-db is too old to know the release (e.g. ubuntu26.10),
+  the newest Ubuntu OS variant it knows about is used for virt-install.
+- With --options dryrun the YAML is written to /tmp and the commands are only printed.
 
 Examples
 --------

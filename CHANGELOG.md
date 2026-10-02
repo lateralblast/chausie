@@ -4,6 +4,43 @@ All notable changes to this project are documented in this file.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.4] - 2026-10-02
+
+### Added
+- Added serial console (console=ttyS0,115200n8) and visible grub menu to generated imagecraft yaml
+- Added netplan network part to imagecraft yaml, DHCP via --options dhcp (or no --ip), static otherwise
+- Added consoledev and consolespeed defaults
+- Added --buildbase switch and automatic imagecraft build base selection
+- Added gir1.2-freedesktop-dev, gir1.2-girepository-2.0, gir1.2-girepository-2.0-dev and gir1.2-glib-2.0-dev to required Linux packages
+- Added 30s timeout drop-in for systemd-networkd-wait-online in imagecraft yaml (boot stalls on 26.04/26.10 otherwise)
+- Added chmod 600 of generated netplan file in imagecraft yaml
+- Added imagecraft, snap, and new package prerequisites to README, and an Imagecraft Images section
+
+### Fixed
+- Fixed dryrun writing the imagecraft yaml into the releases directory (now written to /tmp)
+- Fixed spurious image creation error in dryrun mode
+- Fixed imagecraft failing for 26.04 as the snapcraft multipass remote has no such image (build base now falls back to 24.04)
+- Fixed imagecraft rejecting build-base ubuntu@26.10 (development release is now written as devel)
+- Fixed virt-install failing with unknown OS name for releases missing from osinfo-db (e.g. ubuntu26.10), now falls back to newest known Ubuntu variant
+- Fixed nested quoting in execute_command/run_command so multi-word virt-customize --run-command and --install arguments reach the guest intact
+- Fixed create_keys failing when host keys already exist (imagecraft images ship with baked-in host keys), now removes and regenerates all with ssh-keygen -A
+
+## [1.6.3] - 2026-10-01
+
+### Added
+- Added --swapsize switch
+- Added --bootsize switch
+- Added initial imagecraft yaml file creation
+
+### Fixed
+- Fixed typo in packager header
+- Fixed quoting in imagecraft file notice message
+- Fixed duplicate imagename default
+- Fixed snap list failing on hosts without snap
+- Fixed imagecraft check using sudo outside execute_command
+- Fixed rootsize default referencing removed defaults['size']
+- Fixed MB sizes (e.g. 512M) being truncated to 0G
+
 ## [1.6.2] - 2026-09-21
 
 ### Fixed
