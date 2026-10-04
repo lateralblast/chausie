@@ -248,6 +248,29 @@ cloud-init settings (user, password, SSH key, network, etc.). The path the cloud
 is written to can be changed with --cloudinitfile (the default is under the VM's directory,
 e.g. /var/lib/libvirt/images/test/test.cloud.cfg).
 
+More examples:
+
+```
+# Preview what would be done without building anything
+./chausie.sh --action createimage --name test --release 24.04 --vmtype imagecraft --options dryrun
+
+# Larger image and VM disk
+./chausie.sh --action createvm --name test --release 24.04 --vmtype imagecraft --imagesize 20G --size 50G
+
+# Static IP baked into the image
+./chausie.sh --action createvm --name test --release 24.04 --vmtype imagecraft \
+  --ip 192.168.10.74 --cidr 22 --gateway 192.168.11.254 --dns 8.8.8.8
+
+# Development release, with an explicit build base
+./chausie.sh --action createimage --name test --release 26.10 --vmtype imagecraft --buildbase devel
+
+# cloud-init image and VM with an SSH key
+./chausie.sh --action createvm --name test --release 24.04 --vmtype imagecraft --cloudinit \
+  --sshkeyfile ~/.ssh/id_rsa.pub
+```
+
+See the wiki page [Imagecraft Examples](https://github.com/lateralblast/chausie/wiki/Imagecraft) for more.
+
 Notes:
 
 - Imagecraft builds inside a multipass VM from the snapcraft remote, which does not
