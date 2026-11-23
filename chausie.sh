@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Name:         chausie (Cloud-Image Host Automation Utility and System Image Engine)
-# Version:      1.6.4
+# Version:      1.6.5
 # Release:      1
 # License:      CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0)
 #               https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
@@ -175,10 +175,8 @@ check_packages () {
 # Run Shellcheck
 
 check_shellcheck () {
-  bin_test=$( command -v shellcheck | grep -c shellcheck )
-  if [ ! "${bin_test}" -eq 0 ]; then
-    shellcheck "${script['file']}"
-  fi
+  check_command_exists "shellcheck"
+  shellcheck "${script['file']}"
 }
 
 # Get Debian Codename from Release
@@ -629,15 +627,10 @@ get_gateway () {
 
 get_cidr () {
   if [ "${os['name']}" = "Darwin" ]; then
-    bin_test=$( command -v ipcalc | grep -c ipcalc )
-    if [ ! "${bin_test}" = "0" ]; then
-      interface=$( route -n get default | grep interface | awk '{print $2}' )
-      vm['netmask']=$( ifconfig "${interface}" | grep mask | awk '{print $4}' )
-      vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask | awk '{print $4}' )
-    else
-      warning_message "Tool ipcalc not found"
-      vm['cidr']="24"
-    fi
+    check_command_exists "ipcalc"
+    interface=$( route -n get default | grep interface | awk '{print $2}' )
+    vm['netmask']=$( ifconfig "${interface}" | grep mask | awk '{print $4}' )
+    vm['cidr']=$( ipcalc "1.1.1.1" "${vm['netmask']}" | grep ^Netmask | awk '{print $4}' )
   else
     vm['cidr']=$( ip r | grep link | grep "${vm['bridge']}" | awk '{print $1}' | cut -f2 -d/ | head -1 )
     if [[ ! "${vm['cidr']}" =~ ^[0-9]+$ ]]; then
@@ -828,7 +821,7 @@ set_defaults () {
   iso['codename']=""
   if [ "${os['name']}" = "Darwin" ]; then
     os['installedpackages']=$( brew list )
-    os['requiredpackages']="qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
+    os['requiredpackages']="wget pbzip2 qemu libvirt libvirt-glib libvirt-python virt-manager libosinfo ipcalc cdrtools"
     defaults['bridge']="en0"
   else
     if command -v snap > /dev/null 2>&1; then
@@ -838,7 +831,7 @@ set_defaults () {
     fi
     os['installedpackages']=$( dpkg -l | grep ^ii | awk '{print $2}' | cut -f1 -d: )
     os['requiredsnaps']="imagecraft multipass"
-    os['requiredpackages']="virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev qemu-system-x86 ovmf gir1.2-freedesktop-dev gir1.2-girepository-2.0 gir1.2-girepository-2.0-dev gir1.2-glib-2.0-dev"
+    os['requiredpackages']="wget pbzip2 virt-manager libosinfo-bin libguestfs-tools cloud-image-utils ipcalc whois libvirt-dev qemu-system-x86 ovmf gir1.2-freedesktop-dev gir1.2-girepository-2.0 gir1.2-girepository-2.0-dev gir1.2-glib-2.0-dev"
     defaults['bridge']="br0"
   fi
   if [ "${os['name']}" = "Darwin" ]; then
@@ -993,6 +986,16 @@ delete_libvirt_dir () {
   fi
 }
 
+# Check command exists
+
+check_command_exists () {
+  command="$1"
+  if ! command -v "${command}" >/dev/null 2>&1; then
+    warning_message "Command \"${command}\" does not exist"
+    do_exit
+  fi
+}
+
 # Get image
 
 get_image () {
@@ -1015,10 +1018,12 @@ get_image () {
       ;;
   esac
   if [ ! -f "${check_file}" ]; then
+    check_command_exists "wget"
     if [ "${vm['osname']}" = "opnsense" ]; then
       if [ ! -f "${check_file}.bz2" ]; then
         execute_command "cd ${vm['releasedir']} ; wget ${vm['imageurl']}" "linuxsu"
       fi
+      check_command_exists "pbzip2"
       execute_command "pbzip2 -d ${check_file}.bz2" "linuxsu"
     else
       if [ "${vm['vmtype']}" = "imagecraft" ]; then

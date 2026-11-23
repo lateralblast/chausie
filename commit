@@ -1,0 +1,124 @@
+#!/bin/sh
+# commit: stage the new and changed files (git add -A, which respects .gitignore), commit them
+# with the newest CHANGELOG.md entry as the message, and with --push, push the branch. No assistant trailer is added.
+#
+#   ./commit                 stage and commit
+#   ./commit --push          stage, commit (if there is anything to commit), then push
+#   ./commit --dry-run       show what would be committed and pushed, and change nothing
+#                            (--dryrun also works)
+#   ./commit --help          show this help
+set -eu
+
+ROOT=$(cd "$(dirname "$0")" && pwd)
+cd "$ROOT"
+
+usage() {
+    sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+fail() {
+    printf 'commit: %s\n' "$*" >&2
+    exit 1
+}
+
+dry=0
+push=0
+for arg in "$@"; do
+    case "$arg" in
+        --push) push=1 ;;
+        --dry-run|--dryrun) dry=1 ;;
+        --help|-h) usage; exit 0 ;;
+        *) fail "unknown option $arg (try --help)" ;;
+    esac
+done
+
+[ -f CHANGELOG.md ] || fail "no CHANGELOG.md here"
+
+# The newest version's heading. chausie's entries are "## [x.y.z] - date" under "# Changelog".
+heading=$(awk '/^## \[/ { print; exit }' CHANGELOG.md)
+[ -n "$heading" ] || fail "no version entry found in CHANGELOG.md"
+version=$(printf '%s\n' "$heading" | sed 's/^## \[\([^]]*\)\].*/\1/')
+
+# The entry's body: everything under the heading, up to the next version heading.
+body=$(awk -v heading="$heading" '
+    $0 == heading { inside = 1; next }
+    /^## / && inside { exit }
+    inside && !started && /^$/ { next }
+    inside { started = 1; print }
+' CHANGELOG.md | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+
+message_file=$(mktemp)
+trap 'rm -f "$message_file"' EXIT
+# The subject is a summary: the first bullet of the entry, cut to 72 characters
+# at a word boundary. The body is the whole entry.
+first=$(printf '%s\n' "$body" | sed -n 's/^- //p' | head -1 | sed 's/\.$//')
+if [ -n "$first" ]; then
+    subject="$first"
+else
+    subject="chausie $version"
+fi
+subject=$(printf '%s' "$subject" | awk '{ if (length($0) > 72) { s = substr($0, 1, 72); sub(/ [^ ]*$/, "", s); print s } else print }')
+{
+    printf '%s\n\n' "$subject"
+    printf '%s\n' "$body"
+} > "$message_file"
+
+# No assistant attribution in the history: refuse a message that names Claude or carries a Co-Authored-By trailer
+if grep -qi -e 'claude' -e 'co-authored-by' "$message_file"; then
+    fail "the message names Claude or carries a Co-Authored-By line: remove it from CHANGELOG.md"
+fi
+
+git add -A
+
+# Refuse to commit anything whose staged content names Claude (CLAUDE.md is git-ignored, so this is a backstop)
+if git diff --cached --name-only | grep -qi 'claude'; then
+    git reset -q
+    fail "a staged file name mentions Claude: unstage it or add it to .gitignore"
+fi
+
+committed=0
+if git diff --cached --quiet; then
+    echo "nothing new to commit"
+else
+    committed=1
+    if [ "$dry" = 1 ]; then
+        echo "files that would be committed:"
+        git diff --cached --name-status | sed 's/^/  /'
+        echo
+        echo "message:"
+        sed 's/^/  /' "$message_file"
+        echo
+    else
+        git commit -q -F "$message_file"
+        git log -1 --format='committed %h: %s'
+    fi
+fi
+
+# Leave the index as it was for a dry run.
+[ "$dry" = 0 ] || git reset -q
+
+if [ "$push" = 1 ]; then
+    branch=$(git symbolic-ref --quiet --short HEAD) || fail "HEAD is not on a branch: check out a branch to push"
+    if git rev-parse --quiet --verify '@{u}' >/dev/null; then
+        ahead=$(git rev-list --count '@{u}..HEAD')
+        if [ "$dry" = 1 ]; then
+            if [ "$ahead" -gt 0 ] || [ "$committed" = 1 ]; then
+                echo "would push $branch ($ahead commit(s) ahead, plus the commit above)"
+            else
+                echo "nothing to push"
+            fi
+        elif [ "$ahead" -gt 0 ] || [ "$committed" = 1 ]; then
+            git push
+        else
+            echo "nothing to push"
+        fi
+    else
+        if [ "$dry" = 1 ]; then
+            echo "would push $branch and set its upstream to origin/$branch"
+        else
+            git push -u origin "$branch"
+        fi
+    fi
+elif [ "$committed" = 0 ]; then
+    fail "nothing to commit"
+fi

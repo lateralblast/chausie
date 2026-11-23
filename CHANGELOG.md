@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.5] - 2026-11-23
+
+### Added
+- Added wget and pbzip2 to required Linux packages
+- Added check_command_exists helper, which warns and exits if a required command is missing
+- Added commit script to create commits from the newest changelog entry, with --dry-run and --push options
+
+### Changed
+- Missing ipcalc on macOS is now a fatal error instead of falling back to a 24 bit CIDR
+- Missing shellcheck is now a fatal error when running --action shellcheck
+
+### Fixed
+- Fixed image download failing with an unclear error when wget is not installed, now checked before download
+- Fixed OPNsense image extraction failing with an unclear error when pbzip2 is not installed, now checked before extraction
+
 ## [1.6.4] - 2026-10-02
 
 ### Added
